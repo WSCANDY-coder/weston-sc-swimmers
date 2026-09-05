@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weston SC - Swimmers & Parents Hub</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #334155;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --accent-rose: #f43f5e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- TOP HORIZONTAL NAV BAR --- */
+    header.top-navbar {
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+    .brand-badge {
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid var(--accent-cyan);
+      padding: 0.15rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    nav.horizontal-nav {
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+    }
+
+    .nav-list {
+      display: flex;
+      list-style: none;
+      gap: 0.5rem;
+    }
+
+    .nav-item {
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 1px solid transparent;
+      border-bottom: 3px solid transparent;
+    }
+
+    .nav-item:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .nav-item.active {
+      background-color: var(--bg-card);
+      color: var(--accent-cyan);
+      border-color: var(--border-color);
+      border-bottom-color: var(--accent-cyan);
+    }
+
+    /* --- MAIN CONTENT AREA --- */
+    main {
+      flex-grow: 1;
+      padding: 1.75rem 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .top-bar {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+    .top-bar h1 { font-size: 1.75rem; font-weight: 800; }
+    .top-bar p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.2rem; }
+
+    .view-content { display: none; }
+    .view-content.active { display: block; }
+
+    /* Overview Action Grid */
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .card-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 160px;
+    }
+    .card-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5);
+      background-color: var(--bg-card-hover);
+    }
+
+    .card-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .card-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem; }
+    .card-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }
+    .card-badge {
+      align-self: flex-start;
+      margin-top: 1rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Controls & Search Rows */
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      background: var(--bg-card);
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .search-input, .select-input {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.6rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    .search-input { flex-grow: 1; min-width: 240px; }
+    .search-input:focus, .select-input:focus { border-color: var(--accent-cyan); }
+
+    /* Tables */
+    .table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      overflow-x: auto;
+    }
+
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; }
+    th {
+      background: rgba(15, 23, 42, 0.6);
+      padding: 0.85rem 1rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
+
+    /* Squad Roster Grid */
+    .squad-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+    .squad-column {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .squad-column h3 { font-size: 0.95rem; color: var(--text-main); padding-bottom: 0.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); }
+    .squad-member { padding: 0.4rem 0.6rem; background: rgba(255, 255, 255, 0.03); border-radius: 6px; margin-bottom: 0.4rem; font-size: 0.85rem; }
+
+    /* Modal Overlay */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.8);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1100;
+      padding: 1rem;
+    }
+    .modal-backdrop.hidden { display: none; }
+    .modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 800px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+    .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+    .modal-body { padding: 1rem 0; overflow-y: auto; flex-grow: 1; }
+
+    /* Mobile Breakpoints */
+    @media (max-width: 768px) {
+      main { padding: 1rem; }
+      header.top-navbar { padding: 0.75rem 1rem; }
+      .controls-row { flex-direction: column; }
+      .search-input, .select-input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Horizontal Navigation Bar -->
+  <header class="top-navbar">
+    <div class="brand">
+      <span>🏊 Weston SC</span>
+      <span class="brand-badge">Swimmers Hub</span>
+    </div>
+    <nav class="horizontal-nav">
+      <ul class="nav-list">
+        <li id="tab-overview" class="nav-item active" onclick="switchView('overview')">🏠 Overview</li>
+        <li id="tab-swimmers" class="nav-item" onclick="switchView('swimmers')">🏊‍♀️ Swimmer PBs</li>
+        <li id="tab-movements" class="nav-item" onclick="switchView('movements')">📊 Squad Movements</li>
+        <li id="tab-calendar" class="nav-item" onclick="switchView('calendar')">📅 Meet Calendar</li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Main View Area Wrapper -->
+  <main>
+    <div class="top-bar">
+      <div>
+        <h1 id="view-title">Swimmers & Parents Hub</h1>
+        <p id="view-desc">Track personal bests, Swim England event progression, squad allocations, and target meets.</p>
+      </div>
+    </div>
+
+    <!-- TOP URGENT ANNOUNCEMENT BANNER -->
+    <div id="top-announcement-banner" style="margin-bottom: 1.25rem;"></div>
+
+    <!-- VIEW 1: Overview Dashboard -->
+    <div id="view-overview" class="view-content active">
+      <div class="action-grid">
+        <div class="card-btn notices" style="border-top: 4px solid var(--accent-amber);" onclick="openNoticesModal()">
+          <div>
+            <div class="card-icon">📢</div>
+            <div class="card-title">Club Notices & News</div>
+            <div class="card-desc">Official Weston SC announcements, gala entry deadlines, and squad news.</div>
+          </div>
+          <span class="card-badge" id="overview-notices-badge" style="background: rgba(245,158,11,0.2); color: var(--accent-amber); border-color: var(--accent-amber);">Active Notices</span>
+        </div>
+
+        <div class="card-btn swimmers" style="border-top: 4px solid var(--accent-cyan);" onclick="switchView('swimmers')">
+          <div>
+            <div class="card-icon">🏊‍♀️</div>
+            <div class="card-title">Swimmer PBs & Progression</div>
+            <div class="card-desc">View official swim times, 12-month rolling form, Swim England history graphs, and Somerset County QT badges.</div>
+          </div>
+          <span class="card-badge" id="overview-swimmers-badge">1,000+ Raw Times</span>
+        </div>
+
+        <div class="card-btn movements" style="border-top: 4px solid var(--accent-blue);" onclick="switchView('movements')">
+          <div>
+            <div class="card-icon">📊</div>
+            <div class="card-title">Squad Movements & Schedules</div>
+            <div class="card-desc">Review current squad allocations, weekly pool training schedules, and weekend extra session times.</div>
+          </div>
+          <span class="card-badge">Squad Roster & Schedules</span>
+        </div>
+
+        <div class="card-btn calendar" style="border-top: 4px solid var(--accent-emerald);" onclick="switchView('calendar')">
+          <div>
+            <div class="card-icon">📅</div>
+            <div class="card-title">Meet Calendar</div>
+            <div class="card-desc">Scheduled galas, target open meets, entry deadlines, and venue details.</div>
+          </div>
+          <span class="card-badge" id="overview-calendar-badge">Calendar Events</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: Swimmers Dashboard -->
+    <div id="view-swimmers" class="view-content">
+      <div class="controls-row">
+        <input type="text" id="swimmers-search" class="search-input" placeholder="Search swimmer name, event, meet, or venue..." oninput="filterSwimmers()">
+        <select id="swimmers-name-select" class="select-input" onchange="filterSwimmers()">
+          <option value="ALL">All Swimmers</option>
+        </select>
+        <select id="swimmers-event-select" class="select-input" onchange="filterSwimmers()">
+          <option value="ALL">All Events</option>
+        </select>
+        <select id="swimmers-course-select" class="select-input" onchange="filterSwimmers()">
+          <option value="ALL">All Courses</option>
+          <option value="LC">Long Course (LC)</option>
+          <option value="SC">Short Course (SC)</option>
+        </select>
+        <select id="swimmers-county-select" class="select-input" onchange="filterSwimmers()">
+          <option value="ALL">All County Status</option>
+          <option value="QUALIFIED">🏆 County Qualifiers Only</option>
+        </select>
+        <select id="swimmers-bsg-select" class="select-input" onchange="filterSwimmers()">
+          <option value="ALL">All BSG L2 Status</option>
+          <option value="QUALIFIED">🏅 BSG Level 2 Qualifiers Only</option>
+        </select>
+        <select id="swimmers-devlop-select" class="select-input" onchange="filterSwimmers()">
+          <option value="ALL">All Devlop Status</option>
+          <option value="ELIGIBLE">📈 Devlop Eligible Races Only</option>
+        </select>
+        <select id="swimmers-timeframe-select" class="select-input" onchange="filterSwimmers()">
+          <option value="ALL">All Time</option>
+          <option value="12M">📅 Past 12 Months</option>
+          <option value="6M">📅 Past 6 Months</option>
+          <option value="2026">📅 2026 Season</option>
+        </select>
+      </div>
+
+      <div id="swimmer-summary-banner" style="margin-bottom: 1rem;"></div>
+
+      <div class="table-container">
+        <table id="swimmers-table">
+          <thead>
+            <tr>
+              <th>Swimmer Name</th>
+              <th>SE #</th>
+              <th>Event</th>
+              <th>Course</th>
+              <th>Display Time</th>
+              <th>Converted Time</th>
+              <th>WA Points</th>
+              <th>Date</th>
+              <th>Meet / Venue</th>
+              <th>County QT</th>
+              <th>BSG L2</th>
+              <th>Devlop '26</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VIEW 3: Squad Movements Module -->
+    <div id="view-movements" class="view-content">
+      <div class="squad-grid" id="squad-grid"></div>
+    </div>
+
+    <!-- VIEW 4: Meet Calendar Module -->
+    <div id="view-calendar" class="view-content">
+      <div class="controls-row">
+        <input type="text" id="calendar-search" class="search-input" placeholder="Search gala date, meet title, or pool venue..." oninput="filterCalendar()">
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Event / Gala Title</th>
+              <th>Venue / Location</th>
+            </tr>
+          </thead>
+          <tbody id="calendar-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- SWIMMER PROFILE & PB MODAL -->
+  <div id="swimmer-profile-modal" class="modal-backdrop hidden" onclick="if(event.target === this) closeSwimmerModal()">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 id="swimmer-modal-name">Swimmer Personal Bests</h3>
+          <p id="swimmer-modal-sub" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;"></p>
+        </div>
+        <button class="modal-close" onclick="closeSwimmerModal()">&times;</button>
+      </div>
+      <div id="swimmer-modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- CLUB NOTICES MODAL -->
+  <div id="notices-modal" class="modal-backdrop hidden" onclick="if(event.target === this) closeNoticesModal()">
+    <div class="modal-card" style="max-width: 720px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="notices-modal-title">📢 Weston SC - Club Notices & News</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">Official announcements, squad schedules, and gala entry deadlines</p>
+        </div>
+        <button class="modal-close" onclick="closeNoticesModal()">&times;</button>
+      </div>
+      <div id="notices-modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- DATA & APP LOGIC (WITH CACHE BUSTING) -->
+  <script>
+    // Dynamic Cache-Busting Script Loader for Data Endpoints
+    (function loadDatasets() {
+      const v = Date.now();
+      const loadScript = (src) => {
+        return new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = src + '?v=' + v;
+          s.onload = resolve;
+          s.onerror = () => {
+            // Fallback for local dev relative paths
+            const fallback = document.createElement('script');
+            fallback.src = '../src/' + src + '?v=' + v;
+            fallback.onload = resolve;
+            fallback.onerror = reject;
+            document.head.appendChild(fallback);
+          };
+          document.head.appendChild(s);
+        });
+      };
+
+      Promise.all([
+        loadScript('raw_data.js'),
+        loadScript('data.js')
+      ]).then(() => {
+        return loadScript('app.js');
+      }).catch(err => {
+        console.warn("Dataset dynamic fetch warning:", err);
+      });
+    })();
+  </script>
+</body>
+</html>
