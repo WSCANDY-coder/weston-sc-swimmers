@@ -1,4 +1,4 @@
-Weston SC - Swimmers & Parents Hub (`weston-sc-swimmers`)
+# Weston SC - Swimmers & Parents Hub (`weston-sc-swimmers`)
 
 This repository is the public-facing, read-only web portal for Weston SC swimmers, parents, and coaches. It provides fast mobile access to personal best times, Swim England progression history, squad allocations, weekly training schedules, target open meets, and club notices.
 
