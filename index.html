@@ -341,9 +341,13 @@
     <!-- VIEW 2: Swimmers Dashboard -->
     <div id="view-swimmers" class="view-content">
       <div class="controls-row">
-        <input type="text" id="swimmers-search" class="search-input" placeholder="Search swimmer name, event, meet, or venue..." oninput="filterSwimmers()">
-        <select id="swimmers-name-select" class="select-input" onchange="filterSwimmers()">
-          <option value="ALL">All Swimmers</option>
+        <select id="swimmers-name-select" class="select-input" onchange="filterSwimmers()" style="min-width: 220px; font-weight: 700;">
+          <option value="NONE" selected>👤 Choose a Swimmer...</option>
+          <option value="ALL">All Swimmers (A-Z)</option>
+        </select>
+        <select id="swimmers-mode-select" class="select-input" onchange="filterSwimmers()" style="background: rgba(6,182,212,0.12); color: var(--accent-cyan); border-color: var(--accent-cyan); font-weight: 700;">
+          <option value="PB" selected>⭐ Personal Bests (Fastest Only)</option>
+          <option value="ALL_SWIMS">📜 All Race History</option>
         </select>
         <select id="swimmers-event-select" class="select-input" onchange="filterSwimmers()">
           <option value="ALL">All Events</option>
