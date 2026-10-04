@@ -126,6 +126,7 @@ function getActiveSquadSwimmerNames() {
         SQUAD_LIST_DATA.forEach(r => {
             const val = (r[col] || '').trim();
             if (!val) return;
+            if (val.toLowerCase().includes('max number')) return;
             const hasNumbers = /\d/.test(val);
             const hasKeyword = /\b(sat|saturday|sun|sunday|mon|tue|wed|thu|fri|am|pm|session)\b/i.test(val);
             if (!hasNumbers || !hasKeyword) {
@@ -715,6 +716,7 @@ function renderSquadList() {
         SQUAD_LIST_DATA.forEach(r => {
             const val = (r[col] || '').trim();
             if (!val) return;
+            if (val.toLowerCase().includes('max number')) return;
 
             const hasNumbers = /\d/.test(val);
             const hasKeyword = /\b(sat|saturday|sun|sunday|mon|tue|wed|thu|fri|am|pm|session)\b/i.test(val);
@@ -1021,27 +1023,70 @@ function initDashboard() {
     }
 }
 
-const GOOGLE_SHEET_SQUAD_CSV_URL = 'https://docs.google.com/spreadsheets/d/1J29UMv1JGfz0cemI3sMgCOierIhe8wM0Kik3p5j9ork/export?format=csv&gid=381588361';
+const GOOGLE_SHEET_SQUAD_CSV_URL = 'https://docs.google.com/spreadsheets/d/1_gCeBY0aJU-N4oWEr2wtc-DC6qttwB_W9vcMMDYaL8g/export?format=csv&gid=381588361';
+
+function parseCSVRows(csvText) {
+    const rows = [];
+    let currentRow = [];
+    let currentCell = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < csvText.length; i++) {
+        const ch = csvText[i];
+        const nextCh = csvText[i + 1];
+
+        if (ch === '"') {
+            if (inQuotes && nextCh === '"') {
+                currentCell += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (ch === ',' && !inQuotes) {
+            currentRow.push(currentCell.trim());
+            currentCell = '';
+        } else if ((ch === '\r' || ch === '\n') && !inQuotes) {
+            if (ch === '\r' && nextCh === '\n') {
+                i++;
+            }
+            currentRow.push(currentCell.trim());
+            if (currentRow.some(cell => cell.length > 0)) {
+                rows.push(currentRow);
+            }
+            currentRow = [];
+            currentCell = '';
+        } else {
+            currentCell += ch;
+        }
+    }
+    if (currentCell.length > 0 || currentRow.length > 0) {
+        currentRow.push(currentCell.trim());
+        if (currentRow.some(cell => cell.length > 0)) {
+            rows.push(currentRow);
+        }
+    }
+    return rows;
+}
 
 function parseCsvToObjects(csvText) {
     if (!csvText) return [];
-    const lines = csvText.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length <= 1) return [];
+    const rows = parseCSVRows(csvText);
+    if (rows.length <= 1) return [];
     
     let headerIdx = 0;
-    for (let i = 0; i < lines.length; i++) {
-        const parts = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
-        if (parts.filter(Boolean).length > 2 && !parts.some(p => p.toLowerCase().includes('weston sc'))) {
+    for (let i = 0; i < rows.length; i++) {
+        const parts = rows[i];
+        if (parts.filter(Boolean).length >= 2 && !parts.some(p => p.toLowerCase().includes('weston sc') || p.toLowerCase().includes('squad list'))) {
             headerIdx = i;
             break;
         }
     }
     
-    const headers = lines[headerIdx].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+    const headers = rows[headerIdx];
     const dataObjects = [];
     
-    for (let i = headerIdx + 1; i < lines.length; i++) {
-        const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+        const cols = rows[i];
         const rowObj = {};
         headers.forEach((h, idx) => {
             if (h) rowObj[h] = cols[idx] || '';
