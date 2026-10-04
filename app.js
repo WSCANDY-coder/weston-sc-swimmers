@@ -285,26 +285,33 @@ function updateEventOptions(swimmerName) {
     eventSelect.value = (previousSelected && uniqueEvents.includes(previousSelected)) ? previousSelected : 'ALL';
 }
 
-function populateSwimmersDropdowns(data) {
+function populateSwimmersDropdowns(data, forceRefresh = false) {
     const swimmerSelect = document.getElementById('swimmers-name-select');
     if (!data || !data.length) return;
 
-    if (swimmerSelect && swimmerSelect.options.length <= 2) {
+    if (swimmerSelect && (forceRefresh || swimmerSelect.options.length <= 2)) {
         const squadSwimmers = getActiveSquadSwimmerNames();
         const availableSwimmers = squadSwimmers.length > 0 
             ? squadSwimmers 
             : Array.from(new Set(data.map(r => r.swimmerName).filter(Boolean))).sort();
 
-        swimmerSelect.innerHTML = '<option value="NONE" selected>👤 Choose a Swimmer...</option><option value="ALL">All Swimmers (A-Z)</option>';
+        const currentVal = swimmerSelect.value;
+
+        swimmerSelect.innerHTML = '<option value="NONE">👤 Choose a Swimmer...</option><option value="ALL">All Swimmers (A-Z)</option>';
         availableSwimmers.forEach(name => {
             const opt = document.createElement('option');
             opt.value = name;
             opt.textContent = name;
             swimmerSelect.appendChild(opt);
         });
-        swimmerSelect.value = 'NONE';
+
+        if (currentVal && Array.from(swimmerSelect.options).some(o => o.value === currentVal)) {
+            swimmerSelect.value = currentVal;
+        } else {
+            swimmerSelect.value = 'NONE';
+        }
     }
-    updateEventOptions('NONE');
+    updateEventOptions(swimmerSelect ? swimmerSelect.value : 'NONE');
 }
 
 const SWIMMER_EVENT_ORDER = [
@@ -517,7 +524,8 @@ function filterSwimmers() {
     const devlopVal = document.getElementById('swimmers-devlop-select')?.value || 'ALL';
     const timeframeVal = document.getElementById('swimmers-timeframe-select')?.value || 'ALL';
 
-    const squadSwimmersSet = new Set(getActiveSquadSwimmerNames());
+    const activeSquadList = getActiveSquadSwimmerNames();
+    const squadSwimmersSet = new Set(activeSquadList.map(n => (n || '').trim().toLowerCase()));
 
     let cutoffDate = null;
     let seasonYear = null;
@@ -532,8 +540,9 @@ function filterSwimmers() {
     }
 
     let filtered = RAW_SWIMMERS_DATA.filter(r => {
-        const matchesSquadRoster = (swimmerName !== 'ALL') || (squadSwimmersSet.size === 0 || squadSwimmersSet.has(r.swimmerName));
-        const matchesName = swimmerName === 'ALL' || (r.swimmerName || '') === swimmerName;
+        const cleanRecName = (r.swimmerName || '').trim().toLowerCase();
+        const matchesSquadRoster = (squadSwimmersSet.size === 0 || squadSwimmersSet.has(cleanRecName));
+        const matchesName = swimmerName === 'ALL' || (r.swimmerName || '').trim() === swimmerName.trim();
         const matchesEvent = eventVal === 'ALL' || (r.event || '') === eventVal;
         const matchesCourse = courseVal === 'ALL' || getCourse(r) === courseVal;
         const matchesCounty = countyVal === 'ALL' || (countyVal === 'QUALIFIED' && checkCountyStatusForRecord(r.swimmerName, r.seNumber, r.event) === 'QUALIFIED');
@@ -1108,7 +1117,8 @@ async function loadLiveSquadMovements() {
                 SQUAD_LIST_DATA = parsed;
                 if (document.getElementById('squad-grid')) renderSquadList();
                 if (document.querySelector('#swimmers-table tbody')) {
-                    populateSwimmersDropdowns(RAW_SWIMMERS_DATA);
+                    populateSwimmersDropdowns(RAW_SWIMMERS_DATA, true);
+                    filterSwimmers();
                 }
             }
         }
