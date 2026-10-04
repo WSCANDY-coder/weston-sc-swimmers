@@ -1007,6 +1007,8 @@ function initDashboard() {
             renderClubNotices();
         }
 
+        loadLiveSquadMovements();
+
         if (document.querySelector('#swimmers-table tbody')) {
             populateSwimmersDropdowns(RAW_SWIMMERS_DATA);
             filterSwimmers();
@@ -1016,6 +1018,57 @@ function initDashboard() {
 
     } catch (err) {
         console.error("Swimmers Hub initialization error:", err);
+    }
+}
+
+const GOOGLE_SHEET_SQUAD_CSV_URL = 'https://docs.google.com/spreadsheets/d/1J29UMv1JGfz0cemI3sMgCOierIhe8wM0Kik3p5j9ork/export?format=csv&gid=381588361';
+
+function parseCsvToObjects(csvText) {
+    if (!csvText) return [];
+    const lines = csvText.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length <= 1) return [];
+    
+    let headerIdx = 0;
+    for (let i = 0; i < lines.length; i++) {
+        const parts = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+        if (parts.filter(Boolean).length > 2 && !parts.some(p => p.toLowerCase().includes('weston sc'))) {
+            headerIdx = i;
+            break;
+        }
+    }
+    
+    const headers = lines[headerIdx].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+    const dataObjects = [];
+    
+    for (let i = headerIdx + 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+        const rowObj = {};
+        headers.forEach((h, idx) => {
+            if (h) rowObj[h] = cols[idx] || '';
+        });
+        if (Object.values(rowObj).some(Boolean)) {
+            dataObjects.push(rowObj);
+        }
+    }
+    return dataObjects;
+}
+
+async function loadLiveSquadMovements() {
+    try {
+        const response = await fetch(GOOGLE_SHEET_SQUAD_CSV_URL + '&t=' + Date.now());
+        if (response.ok) {
+            const csvText = await response.text();
+            const parsed = parseCsvToObjects(csvText);
+            if (parsed && parsed.length > 0) {
+                SQUAD_LIST_DATA = parsed;
+                if (document.getElementById('squad-grid')) renderSquadList();
+                if (document.querySelector('#swimmers-table tbody')) {
+                    populateSwimmersDropdowns(RAW_SWIMMERS_DATA);
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("Could not load live Google Sheet Squad Movements, using local dataset fallback:", e);
     }
 }
 
