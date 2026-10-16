@@ -144,7 +144,7 @@ function getCountyInfoForSwimmer(swimmerName, seNumber) {
         const asa = getRowVal(r, ['ASA Number', 'ASA']);
         const name = getRowVal(r, ['Swimmer Name', 'Name']);
         if (seNumber && asa && String(asa) === String(seNumber)) return true;
-        if (swimmerName && name && name.toLowerCase() === swimmerName.toLowerCase()) return true;
+        if (swimmerName && name && (name.toLowerCase() === swimmerName.toLowerCase() || name.toLowerCase().replace(/[^a-z0-9]/g, '') === swimmerName.toLowerCase().replace(/[^a-z0-9]/g, ''))) return true;
         return false;
     });
     if (!row) return null;
@@ -183,7 +183,7 @@ function getBSGInfoForSwimmer(swimmerName, seNumber) {
         const asa = getRowVal(r, ['ASA Number', 'ASA']);
         const name = getRowVal(r, ['Swimmer Name', 'Name']);
         if (seNumber && asa && String(asa) === String(seNumber)) return true;
-        if (swimmerName && name && name.toLowerCase() === swimmerName.toLowerCase()) return true;
+        if (swimmerName && name && (name.toLowerCase() === swimmerName.toLowerCase() || name.toLowerCase().replace(/[^a-z0-9]/g, '') === swimmerName.toLowerCase().replace(/[^a-z0-9]/g, ''))) return true;
         return false;
     });
     if (!row) return null;
@@ -222,7 +222,7 @@ function getDevlopInfoForSwimmer(swimmerName, seNumber) {
         const asa = getRowVal(r, ['ASA Number', 'ASA']);
         const name = getRowVal(r, ['Swimmer Name', 'Name']);
         if (seNumber && asa && String(asa) === String(seNumber)) return true;
-        if (swimmerName && name && name.toLowerCase() === swimmerName.toLowerCase()) return true;
+        if (swimmerName && name && (name.toLowerCase() === swimmerName.toLowerCase() || name.toLowerCase().replace(/[^a-z0-9]/g, '') === swimmerName.toLowerCase().replace(/[^a-z0-9]/g, ''))) return true;
         return false;
     });
     if (!row) return null;
@@ -270,7 +270,11 @@ function updateEventOptions(swimmerName) {
     const previousSelected = eventSelect.value;
     let availableRecords = RAW_SWIMMERS_DATA;
     if (swimmerName && swimmerName !== 'ALL') {
-        availableRecords = RAW_SWIMMERS_DATA.filter(r => (r.swimmerName || '') === swimmerName);
+        const targetClean = swimmerName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+        availableRecords = RAW_SWIMMERS_DATA.filter(r => {
+            const recClean = (r.swimmerName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+            return recClean === targetClean;
+        });
     }
     const uniqueEvents = Array.from(new Set(availableRecords.map(r => r.event).filter(Boolean))).sort();
 
@@ -541,8 +545,13 @@ function filterSwimmers() {
 
     let filtered = RAW_SWIMMERS_DATA.filter(r => {
         const cleanRecName = (r.swimmerName || '').trim().toLowerCase();
-        const matchesSquadRoster = (squadSwimmersSet.size === 0 || squadSwimmersSet.has(cleanRecName));
-        const matchesName = swimmerName === 'ALL' || (r.swimmerName || '').trim() === swimmerName.trim();
+        const cleanRecNorm = cleanRecName.replace(/[^a-z0-9]/g, '');
+        const matchesSquadRoster = (squadSwimmersSet.size === 0 || squadSwimmersSet.has(cleanRecName) || Array.from(squadSwimmersSet).some(s => s.replace(/[^a-z0-9]/g, '') === cleanRecNorm));
+        
+        const targetClean = swimmerName.trim().toLowerCase();
+        const targetNorm = targetClean.replace(/[^a-z0-9]/g, '');
+        const matchesName = swimmerName === 'ALL' || cleanRecName === targetClean || cleanRecNorm === targetNorm;
+        
         const matchesEvent = eventVal === 'ALL' || (r.event || '') === eventVal;
         const matchesCourse = courseVal === 'ALL' || getCourse(r) === courseVal;
         const matchesCounty = countyVal === 'ALL' || (countyVal === 'QUALIFIED' && checkCountyStatusForRecord(r.swimmerName, r.seNumber, r.event) === 'QUALIFIED');
@@ -574,7 +583,8 @@ function filterSwimmers() {
 }
 
 function openSwimmerModal(seNum, name) {
-    const records = RAW_SWIMMERS_DATA.filter(r => (r.seNumber && String(r.seNumber) === String(seNum)) || (r.swimmerName && r.swimmerName.toLowerCase() === (name || '').toLowerCase()));
+    const targetNorm = (name || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const records = RAW_SWIMMERS_DATA.filter(r => (r.seNumber && String(r.seNumber) === String(seNum)) || (targetNorm && (r.swimmerName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '') === targetNorm));
     if (!records.length) return;
 
     const swimmerName = records[0].swimmerName || name;
