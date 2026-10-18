@@ -6,6 +6,57 @@ let COUNTY_SUMMARY = [];
 let BSG_SUMMARY = [];
 let DEVLOP_DATA = [];
 
+// Remote Google Doc Config / Feature Flags
+let APP_SETTINGS = {
+    showCounty: true,
+    showBSG: true,
+    showDevlop: true
+};
+
+function parseGoogleDocSettings(rawText) {
+    if (!rawText) return null;
+    const settings = { ...APP_SETTINGS };
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    let found = false;
+    lines.forEach(line => {
+        const colonIdx = line.indexOf(':');
+        if (colonIdx !== -1) {
+            const key = line.substring(0, colonIdx).trim().toUpperCase();
+            const val = line.substring(colonIdx + 1).trim().toUpperCase();
+            if (key === 'SHOW_COUNTY') { settings.showCounty = (val === 'ON' || val === 'TRUE' || val === 'YES' || val === '1'); found = true; }
+            else if (key === 'SHOW_BSG') { settings.showBSG = (val === 'ON' || val === 'TRUE' || val === 'YES' || val === '1'); found = true; }
+            else if (key === 'SHOW_DEVLOP') { settings.showDevlop = (val === 'ON' || val === 'TRUE' || val === 'YES' || val === '1'); found = true; }
+        }
+    });
+    return found ? settings : null;
+}
+
+function applyAppSettings() {
+    const countySelect = document.getElementById('swimmers-county-select');
+    if (countySelect) {
+        countySelect.style.display = APP_SETTINGS.showCounty ? '' : 'none';
+        if (!APP_SETTINGS.showCounty) countySelect.value = 'ALL';
+    }
+    const bsgSelect = document.getElementById('swimmers-bsg-select');
+    if (bsgSelect) {
+        bsgSelect.style.display = APP_SETTINGS.showBSG ? '' : 'none';
+        if (!APP_SETTINGS.showBSG) bsgSelect.value = 'ALL';
+    }
+    const devlopSelect = document.getElementById('swimmers-devlop-select');
+    if (devlopSelect) {
+        devlopSelect.style.display = APP_SETTINGS.showDevlop ? '' : 'none';
+        if (!APP_SETTINGS.showDevlop) devlopSelect.value = 'ALL';
+    }
+
+    const colCounty = document.getElementById('col-head-county');
+    if (colCounty) colCounty.style.display = APP_SETTINGS.showCounty ? '' : 'none';
+    const colBsg = document.getElementById('col-head-bsg');
+    if (colBsg) colBsg.style.display = APP_SETTINGS.showBSG ? '' : 'none';
+    const colDevlop = document.getElementById('col-head-devlop');
+    if (colDevlop) colDevlop.style.display = APP_SETTINGS.showDevlop ? '' : 'none';
+}
+
+
 // 1. VIEW SWITCHER
 function switchView(viewId) {
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -378,6 +429,8 @@ function renderSwimmersDashboard(data) {
     const bannerContainer = document.getElementById('swimmer-summary-banner');
     const selectedSwimmer = document.getElementById('swimmers-name-select')?.value;
 
+    const activeCols = 9 + (APP_SETTINGS.showCounty ? 1 : 0) + (APP_SETTINGS.showBSG ? 1 : 0) + (APP_SETTINGS.showDevlop ? 1 : 0);
+
     if (bannerContainer) {
         if (selectedSwimmer === 'NONE') {
             bannerContainer.innerHTML = `
@@ -389,7 +442,7 @@ function renderSwimmersDashboard(data) {
                     </p>
                 </div>
             `;
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:var(--text-muted); padding:2.5rem;">Please select a swimmer from the dropdown above to view records.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${activeCols}" style="text-align:center; color:var(--text-muted); padding:2.5rem;">Please select a swimmer from the dropdown above to view records.</td></tr>`;
             return;
         } else if (selectedSwimmer && selectedSwimmer !== 'ALL' && selectedSwimmer !== 'NONE') {
             const cInfo = getCountyInfoForSwimmer(selectedSwimmer);
@@ -397,7 +450,7 @@ function renderSwimmersDashboard(data) {
             const devInfo = getDevlopInfoForSwimmer(selectedSwimmer);
 
             let bannerHTML = '';
-            if (cInfo && cInfo.qualifiedCount > 0) {
+            if (APP_SETTINGS.showCounty && cInfo && cInfo.qualifiedCount > 0) {
                 bannerHTML += `
                     <div style="background: rgba(16,185,129,0.1); border: 1px solid var(--accent-emerald); border-radius: 10px; padding: 0.75rem 1.15rem; margin-bottom: 0.5rem; display:flex; align-items:center; gap:0.75rem;">
                         <span style="font-size:1.4rem;">🏆</span>
@@ -410,7 +463,7 @@ function renderSwimmersDashboard(data) {
                     </div>
                 `;
             }
-            if (bsgInfo && bsgInfo.qualifiedCount > 0) {
+            if (APP_SETTINGS.showBSG && bsgInfo && bsgInfo.qualifiedCount > 0) {
                 bannerHTML += `
                     <div style="background: rgba(139,92,246,0.1); border: 1px solid var(--accent-purple); border-radius: 10px; padding: 0.75rem 1.15rem; margin-bottom: 0.5rem; display:flex; align-items:center; gap:0.75rem;">
                         <span style="font-size:1.4rem;">🏅</span>
@@ -423,7 +476,7 @@ function renderSwimmersDashboard(data) {
                     </div>
                 `;
             }
-            if (devInfo && devInfo.eligibleCount > 0) {
+            if (APP_SETTINGS.showDevlop && devInfo && devInfo.eligibleCount > 0) {
                 bannerHTML += `
                     <div style="background: rgba(6,182,212,0.1); border: 1px solid var(--accent-cyan); border-radius: 10px; padding: 0.75rem 1.15rem; display:flex; align-items:center; gap:0.75rem;">
                         <span style="font-size:1.4rem;">📈</span>
@@ -447,7 +500,7 @@ function renderSwimmersDashboard(data) {
     if (overviewBadge) overviewBadge.innerText = `${fullData.length.toLocaleString()} Raw Times`;
 
     if (!data || !data.length) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:var(--text-muted); padding:3rem;">No matching swimmer records found.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${activeCols}" style="text-align:center; color:var(--text-muted); padding:3rem;">No matching swimmer records found.</td></tr>`;
         return;
     }
 
@@ -490,6 +543,10 @@ function renderSwimmersDashboard(data) {
             ? `<span style="background:rgba(245,158,11,0.2); color:var(--accent-amber); border:1px solid var(--accent-amber); font-size:0.65rem; padding:0.08rem 0.35rem; border-radius:4px; margin-left:0.3rem; font-weight:800;">⭐ PB</span>`
             : '';
 
+        const countyTd = APP_SETTINGS.showCounty ? `<td>${countyBadge}</td>` : '';
+        const bsgTd = APP_SETTINGS.showBSG ? `<td>${bsgBadge}</td>` : '';
+        const devTd = APP_SETTINGS.showDevlop ? `<td>${devBadge}</td>` : '';
+
         return `
             <tr>
                 <td>${swimmerLink}</td>
@@ -501,9 +558,9 @@ function renderSwimmersDashboard(data) {
                 <td>${waPoints}</td>
                 <td style="color:var(--text-muted);">${dateStr}</td>
                 <td style="color:var(--text-muted); font-size:0.8rem; max-width:210px; overflow:hidden; text-overflow:ellipsis;" title="${venueMeet}">${venueMeet}</td>
-                <td>${countyBadge}</td>
-                <td>${bsgBadge}</td>
-                <td>${devBadge}</td>
+                ${countyTd}
+                ${bsgTd}
+                ${devTd}
             </tr>
         `;
     }).join('');
@@ -523,9 +580,9 @@ function filterSwimmers() {
     const modeVal = document.getElementById('swimmers-mode-select')?.value || 'PB';
     const eventVal = document.getElementById('swimmers-event-select')?.value || 'ALL';
     const courseVal = document.getElementById('swimmers-course-select')?.value || 'ALL';
-    const countyVal = document.getElementById('swimmers-county-select')?.value || 'ALL';
-    const bsgVal = document.getElementById('swimmers-bsg-select')?.value || 'ALL';
-    const devlopVal = document.getElementById('swimmers-devlop-select')?.value || 'ALL';
+    const countyVal = (APP_SETTINGS.showCounty ? document.getElementById('swimmers-county-select')?.value : 'ALL') || 'ALL';
+    const bsgVal = (APP_SETTINGS.showBSG ? document.getElementById('swimmers-bsg-select')?.value : 'ALL') || 'ALL';
+    const devlopVal = (APP_SETTINGS.showDevlop ? document.getElementById('swimmers-devlop-select')?.value : 'ALL') || 'ALL';
     const timeframeVal = document.getElementById('swimmers-timeframe-select')?.value || 'ALL';
 
     const activeSquadList = getActiveSquadSwimmerNames();
@@ -554,9 +611,9 @@ function filterSwimmers() {
         
         const matchesEvent = eventVal === 'ALL' || (r.event || '') === eventVal;
         const matchesCourse = courseVal === 'ALL' || getCourse(r) === courseVal;
-        const matchesCounty = countyVal === 'ALL' || (countyVal === 'QUALIFIED' && checkCountyStatusForRecord(r.swimmerName, r.seNumber, r.event) === 'QUALIFIED');
-        const matchesBSG = bsgVal === 'ALL' || (bsgVal === 'QUALIFIED' && checkBSGStatusForRecord(r.swimmerName, r.seNumber, r.event) === 'QUALIFIED');
-        const matchesDevlop = devlopVal === 'ALL' || (devlopVal === 'ELIGIBLE' && checkDevlopStatusForRecord(r.swimmerName, r.seNumber, r.event) === 'ELIGIBLE');
+        const matchesCounty = !APP_SETTINGS.showCounty || countyVal === 'ALL' || (countyVal === 'QUALIFIED' && checkCountyStatusForRecord(r.swimmerName, r.seNumber, r.event) === 'QUALIFIED');
+        const matchesBSG = !APP_SETTINGS.showBSG || bsgVal === 'ALL' || (bsgVal === 'QUALIFIED' && checkBSGStatusForRecord(r.swimmerName, r.seNumber, r.event) === 'QUALIFIED');
+        const matchesDevlop = !APP_SETTINGS.showDevlop || devlopVal === 'ALL' || (devlopVal === 'ELIGIBLE' && checkDevlopStatusForRecord(r.swimmerName, r.seNumber, r.event) === 'ELIGIBLE');
 
         let matchesTimeframe = true;
         if (cutoffDate || seasonYear) {
@@ -604,7 +661,7 @@ function openSwimmerModal(seNum, name) {
     const devInfo = getDevlopInfoForSwimmer(swimmerName, seNumber);
 
     let summaryBannersHTML = '';
-    if (cInfo && cInfo.qualifiedCount > 0) {
+    if (APP_SETTINGS.showCounty && cInfo && cInfo.qualifiedCount > 0) {
         summaryBannersHTML += `
             <div style="background: rgba(16,185,129,0.12); border: 1px solid var(--accent-emerald); border-radius: 10px; padding: 0.75rem 1.15rem; margin-bottom: 0.6rem; display:flex; align-items:center; gap:0.75rem;">
                 <span style="font-size:1.4rem;">🏆</span>
@@ -617,7 +674,7 @@ function openSwimmerModal(seNum, name) {
             </div>
         `;
     }
-    if (bsgInfo && bsgInfo.qualifiedCount > 0) {
+    if (APP_SETTINGS.showBSG && bsgInfo && bsgInfo.qualifiedCount > 0) {
         summaryBannersHTML += `
             <div style="background: rgba(139,92,246,0.12); border: 1px solid var(--accent-purple); border-radius: 10px; padding: 0.75rem 1.15rem; margin-bottom: 0.6rem; display:flex; align-items:center; gap:0.75rem;">
                 <span style="font-size:1.4rem;">🏅</span>
@@ -630,7 +687,7 @@ function openSwimmerModal(seNum, name) {
             </div>
         `;
     }
-    if (devInfo && devInfo.eligibleCount > 0) {
+    if (APP_SETTINGS.showDevlop && devInfo && devInfo.eligibleCount > 0) {
         summaryBannersHTML += `
             <div style="background: rgba(6,182,212,0.12); border: 1px solid var(--accent-cyan); border-radius: 10px; padding: 0.75rem 1.15rem; margin-bottom: 0.8rem; display:flex; align-items:center; gap:0.75rem;">
                 <span style="font-size:1.4rem;">📈</span>
@@ -667,19 +724,19 @@ function openSwimmerModal(seNum, name) {
                         : `<span style="background:rgba(217,119,6,0.15); color:var(--accent-amber); border:1px solid var(--accent-amber); padding:0.1rem 0.4rem; border-radius:4px; font-weight:700; font-size:0.7rem;">25m (SC)</span>`;
                     
                     const cStatus = checkCountyStatusForRecord(swimmerName, seNumber, pb.event);
-                    const countyCardBadge = cStatus === 'QUALIFIED'
+                    const countyCardBadge = (APP_SETTINGS.showCounty && cStatus === 'QUALIFIED')
                         ? `<span style="background:rgba(16,185,129,0.15); color:var(--accent-emerald); border:1px solid var(--accent-emerald); padding:0.1rem 0.4rem; border-radius:4px; font-weight:700; font-size:0.7rem;">🏆 County QT</span>`
                         : '';
 
                     const bsgStatus = checkBSGStatusForRecord(swimmerName, seNumber, pb.event);
-                    const bsgCardBadge = bsgStatus === 'QUALIFIED'
+                    const bsgCardBadge = (APP_SETTINGS.showBSG && bsgStatus === 'QUALIFIED')
                         ? `<span style="background:rgba(139,92,246,0.15); color:var(--accent-purple); border:1px solid var(--accent-purple); padding:0.1rem 0.4rem; border-radius:4px; font-weight:700; font-size:0.7rem;">🏅 BSG L2</span>`
                         : '';
 
                     const devStatus = checkDevlopStatusForRecord(swimmerName, seNumber, pb.event);
-                    const devCardBadge = devStatus === 'ELIGIBLE'
+                    const devCardBadge = (APP_SETTINGS.showDevlop && devStatus === 'ELIGIBLE')
                         ? `<span style="background:rgba(6,182,212,0.15); color:var(--accent-cyan); border:1px solid var(--accent-cyan); padding:0.1rem 0.4rem; border-radius:4px; font-weight:700; font-size:0.7rem;">📈 Dev Eligible</span>`
-                        : (devStatus === 'TOO_FAST' ? `<span style="background:rgba(244,63,94,0.15); color:var(--accent-rose); border:1px solid var(--accent-rose); padding:0.1rem 0.4rem; border-radius:4px; font-weight:700; font-size:0.7rem;">⛔ Dev Too Fast</span>` : '');
+                        : ((APP_SETTINGS.showDevlop && devStatus === 'TOO_FAST') ? `<span style="background:rgba(244,63,94,0.15); color:var(--accent-rose); border:1px solid var(--accent-rose); padding:0.1rem 0.4rem; border-radius:4px; font-weight:700; font-size:0.7rem;">⛔ Dev Too Fast</span>` : '');
 
                     const seCardUrl = buildSwimEnglandHistoryUrl(seNumber, pb.event, cCourse);
 
@@ -870,6 +927,12 @@ async function loadGoogleDocNotices() {
         const response = await fetch(GOOGLE_DOC_NOTICES_URL + '&t=' + Date.now());
         if (response.ok) {
             const text = await response.text();
+            const docSettings = parseGoogleDocSettings(text);
+            if (docSettings) {
+                APP_SETTINGS = docSettings;
+                applyAppSettings();
+                filterSwimmers();
+            }
             const parsed = parseGoogleDocNotices(text);
             if (parsed && parsed.length > 0) {
                 NOTICES_DATA = parsed;
@@ -1029,6 +1092,8 @@ function initDashboard() {
         }
 
         loadLiveSquadMovements();
+
+        applyAppSettings();
 
         if (document.querySelector('#swimmers-table tbody')) {
             populateSwimmersDropdowns(RAW_SWIMMERS_DATA);
