@@ -267,6 +267,110 @@
     .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
     .modal-body { padding: 1rem 0; overflow-y: auto; flex-grow: 1; }
 
+    /* Qualifiers Tracker & KPI Cards */
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.15rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.4);
+    }
+    .kpi-card.active-kpi {
+      outline: 2px solid var(--accent-cyan);
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.35);
+    }
+    .kpi-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+    .kpi-icon { font-size: 1.5rem; }
+    .kpi-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 0.25rem;
+      color: var(--text-main);
+    }
+    .kpi-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .kpi-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    /* Status Tier Badges */
+    .tier-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .tier-reg-qt {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid var(--accent-emerald);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+    }
+    .tier-reg-cqt {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid var(--accent-blue);
+    }
+    .tier-bubble {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid var(--accent-amber);
+    }
+    .tier-county {
+      background: rgba(139, 92, 246, 0.15);
+      color: var(--accent-purple);
+      border: 1px solid var(--accent-purple);
+    }
+
+    /* Progress Bar in Breakdown Modal */
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      overflow: hidden;
+      position: relative;
+      margin: 0.6rem 0 0.35rem;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 9999px;
+      transition: width 0.5s ease-out;
+    }
+
     /* Mobile Breakpoints */
     @media (max-width: 768px) {
       main { padding: 1rem; }
@@ -288,6 +392,7 @@
       <ul class="nav-list">
         <li id="tab-overview" class="nav-item active" onclick="switchView('overview')">🏠 Overview</li>
         <li id="tab-swimmers" class="nav-item" onclick="switchView('swimmers')">🏊‍♀️ Swimmer PBs</li>
+        <li id="tab-qualifiers" class="nav-item" onclick="switchView('qualifiers')">🏅 County & Regional</li>
         <li id="tab-movements" class="nav-item" onclick="switchView('movements')">📊 Squad Movements</li>
         <li id="tab-calendar" class="nav-item" onclick="switchView('calendar')">📅 Meet Calendar</li>
       </ul>
@@ -316,6 +421,15 @@
             <div class="card-desc">Official Weston SC announcements, gala entry deadlines, and squad news.</div>
           </div>
           <span class="card-badge" id="overview-notices-badge" style="background: rgba(245,158,11,0.2); color: var(--accent-amber); border-color: var(--accent-amber);">Active Notices</span>
+        </div>
+
+        <div class="card-btn qualifiers" style="border-top: 4px solid var(--accent-purple);" onclick="switchView('qualifiers')">
+          <div>
+            <div class="card-icon">🏅</div>
+            <div class="card-title">County & Regional Qualifiers</div>
+            <div class="card-desc">Track Regional auto qualifiers, consideration times, bubble swimmers (within 2%), and County standards.</div>
+          </div>
+          <span class="card-badge" id="overview-qualifiers-badge" style="background: rgba(139,92,246,0.15); color: var(--accent-purple); border-color: var(--accent-purple);">Regional & County Tracker</span>
         </div>
 
         <div class="card-btn swimmers" style="border-top: 4px solid var(--accent-cyan);" onclick="switchView('swimmers')">
@@ -411,7 +525,138 @@
       </div>
     </div>
 
-    <!-- VIEW 3: Squad Movements Module -->
+    <!-- VIEW 3: County & Regional Qualifiers Module -->
+    <div id="view-qualifiers" class="view-content">
+      <!-- SUMMARY KPI CARDS (Interactive Clickable Filters) -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        
+        <!-- Regional QT Card -->
+        <div class="kpi-card" id="kpi-card-reg-qt" onclick="setQualifiersTierFilter('Regional QT')" style="border-top: 4px solid var(--accent-emerald);" title="Click to view all Regional Auto Qualifiers">
+          <div class="kpi-card-header">
+            <span class="kpi-icon">🌟</span>
+            <span class="kpi-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); border: 1px solid var(--accent-emerald);">Auto QT</span>
+          </div>
+          <div class="kpi-value" id="kpi-count-reg-qt" style="color: var(--accent-emerald);">0</div>
+          <div class="kpi-title">Regional Auto Qualifiers</div>
+          <div class="kpi-sub" id="kpi-swimmers-reg-qt">0 Swimmers Qualified</div>
+        </div>
+
+        <!-- Regional CQT Card -->
+        <div class="kpi-card" id="kpi-card-reg-cqt" onclick="setQualifiersTierFilter('Regional CQT')" style="border-top: 4px solid var(--accent-blue);" title="Click to view all Regional Consideration Qualifiers">
+          <div class="kpi-card-header">
+            <span class="kpi-icon">🏅</span>
+            <span class="kpi-badge" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); border: 1px solid var(--accent-blue);">CQT</span>
+          </div>
+          <div class="kpi-value" id="kpi-count-reg-cqt" style="color: var(--accent-blue);">0</div>
+          <div class="kpi-title">Regional Consideration</div>
+          <div class="kpi-sub" id="kpi-swimmers-reg-cqt">0 Swimmers Qualified</div>
+        </div>
+
+        <!-- On the Bubble Card -->
+        <div class="kpi-card" id="kpi-card-bubble" onclick="setQualifiersTierFilter('Within 2% CQT')" style="border-top: 4px solid var(--accent-amber);" title="Click to view Swimmers within 2% of Regional CQT">
+          <div class="kpi-card-header">
+            <span class="kpi-icon">⚡</span>
+            <span class="kpi-badge" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid var(--accent-amber);">Target ≤ 2%</span>
+          </div>
+          <div class="kpi-value" id="kpi-count-bubble" style="color: var(--accent-amber);">0</div>
+          <div class="kpi-title">On the Bubble (≤ 2% of CQT)</div>
+          <div class="kpi-sub" id="kpi-swimmers-bubble">0 Swimmers in striking distance</div>
+        </div>
+
+        <!-- County Qualifiers Card -->
+        <div class="kpi-card" id="kpi-card-county" onclick="setQualifiersTierFilter('County Qualifier')" style="border-top: 4px solid var(--accent-purple);" title="Click to view all County Qualifiers">
+          <div class="kpi-card-header">
+            <span class="kpi-icon">🏆</span>
+            <span class="kpi-badge" style="background: rgba(139, 92, 246, 0.15); color: var(--accent-purple); border: 1px solid var(--accent-purple);">County</span>
+          </div>
+          <div class="kpi-value" id="kpi-count-county" style="color: var(--accent-purple);">0</div>
+          <div class="kpi-title">County Qualifiers</div>
+          <div class="kpi-sub" id="kpi-swimmers-county">0 Swimmers Qualified</div>
+        </div>
+      </div>
+
+      <!-- FILTERS & CONTROLS ROW -->
+      <div class="controls-row" style="align-items: center;">
+        <input type="text" id="qualifiers-search-input" class="search-input" placeholder="🔍 Search swimmer name or event..." oninput="filterQualifiers()">
+        
+        <select id="qualifiers-swimmer-select" class="select-input" onchange="filterQualifiers()">
+          <option value="ALL">All Swimmers</option>
+        </select>
+
+        <select id="qualifiers-squad-select" class="select-input" onchange="filterQualifiers()">
+          <option value="ALL">All Squads</option>
+        </select>
+
+        <select id="qualifiers-cat-select" class="select-input" onchange="filterQualifiers()">
+          <option value="ALL">All Categories</option>
+          <option value="Female">Female</option>
+          <option value="Male/Open">Male/Open</option>
+        </select>
+
+        <select id="qualifiers-age-select" class="select-input" onchange="filterQualifiers()">
+          <option value="ALL">All Age Groups</option>
+          <option value="10">Age 10</option>
+          <option value="11/12">Age 11/12</option>
+          <option value="13">Age 13</option>
+          <option value="14">Age 14</option>
+          <option value="15">Age 15</option>
+          <option value="16">Age 16</option>
+          <option value="17">Age 17</option>
+          <option value="18+">Age 18+</option>
+        </select>
+
+        <select id="qualifiers-status-select" class="select-input" onchange="filterQualifiers()">
+          <option value="ALL">All Qualifiers & Bubble Swims</option>
+          <option value="Regional QT">🌟 Regional Auto QT</option>
+          <option value="Regional CQT">🏅 Regional CQT</option>
+          <option value="Within 2% CQT">⚡ Within 2% of Regional CQT</option>
+          <option value="County Qualifier">🏆 County Qualifier</option>
+          <option value="Developing">🌱 In Development (Chasing County)</option>
+          <option value="ALL_INCLUDING_DEV">📋 All Swims (Including In Development)</option>
+        </select>
+
+        <select id="qualifiers-sort-select" class="select-input" onchange="filterQualifiers()">
+          <option value="margin_asc">Sort: Closest to Qualifying / Fastest Margin</option>
+          <option value="name_asc">Sort: Swimmer Name (A-Z)</option>
+          <option value="event_asc">Sort: Event Name (A-Z)</option>
+          <option value="tier_desc">Sort: Highest Status Tier</option>
+        </select>
+
+        <button onclick="resetQualifiersFilters()" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border-color); color: var(--text-muted); padding: 0.6rem 0.9rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap;" title="Clear all active filters">
+          Reset Filters
+        </button>
+      </div>
+
+      <!-- RESULTS COUNT & ACTIVE FILTER PILL -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; padding: 0 0.25rem; flex-wrap: wrap; gap: 0.5rem;">
+        <div id="qualifiers-result-count" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+          Loading qualification standards...
+        </div>
+        <div id="qualifiers-active-filter-pill" style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600;"></div>
+      </div>
+
+      <!-- TABLE MATRIX VIEW -->
+      <div class="table-container">
+        <table id="qualifiers-table">
+          <thead>
+            <tr>
+              <th>Swimmer Name</th>
+              <th>Squad</th>
+              <th>Age (31/12/27) / Cat</th>
+              <th>Event</th>
+              <th>Course</th>
+              <th>Swimmer PB</th>
+              <th>Target Standard</th>
+              <th>Status Badge</th>
+              <th>Margin / Deficit</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VIEW 4: Squad Movements Module -->
     <div id="view-movements" class="view-content">
       <div class="squad-grid" id="squad-grid"></div>
     </div>
@@ -464,6 +709,20 @@
     </div>
   </div>
 
+  <!-- QUALIFIER SWIMMER PROFILE BREAKDOWN MODAL -->
+  <div id="qualifier-breakdown-modal" class="modal-backdrop hidden" onclick="if(event.target === this) closeQualifierSwimmerModal()">
+    <div class="modal-card" style="max-width: 860px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="qualifier-modal-name" style="font-size: 1.25rem; font-weight: 800; color: var(--text-main);">Swimmer Qualifiers Breakdown</h3>
+          <p id="qualifier-modal-sub" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;"></p>
+        </div>
+        <button class="modal-close" onclick="closeQualifierSwimmerModal()">&times;</button>
+      </div>
+      <div id="qualifier-modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
   <!-- DATA & APP LOGIC (WITH CACHE BUSTING) -->
   <script>
     // Dynamic Cache-Busting Script Loader for Data Endpoints
@@ -488,9 +747,14 @@
 
       Promise.all([
         loadScript('raw_data.js'),
-        loadScript('data.js')
+        loadScript('data.js'),
+        loadScript('qualifiers_standards.js')
       ]).then(() => {
         return loadScript('app.js');
+      }).then(() => {
+        if (typeof initDashboard === 'function') {
+          initDashboard();
+        }
       }).catch(err => {
         console.warn("Dataset dynamic fetch warning:", err);
       });

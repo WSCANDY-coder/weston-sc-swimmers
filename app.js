@@ -1,5 +1,10 @@
 // WESTON SC - SWIMMERS & PARENTS HUB APP ENGINE
-let RAW_SWIMMERS_DATA = [];
+let RAW_SWIMMERS_DATA = (typeof RAW_DATA !== 'undefined' && RAW_DATA.length) 
+    ? RAW_DATA 
+    : (typeof window !== 'undefined' && window.RAW_DATA ? window.RAW_DATA : []);
+if (typeof window !== 'undefined') {
+    window.RAW_SWIMMERS_DATA = RAW_SWIMMERS_DATA;
+}
 let SQUAD_LIST_DATA = [];
 let CALENDAR_DATA = [];
 let COUNTY_SUMMARY = [];
@@ -70,6 +75,7 @@ function switchView(viewId) {
     const titles = {
         'overview': ['Swimmers & Parents Hub', 'Track personal bests, Swim England event progression, squad allocations, and target meets.'],
         'swimmers': ['Swimmer PBs & Progression', 'Detailed performance history, personal bests, rolling 12-month form, and Swim England graphs.'],
+        'qualifiers': ['County & Regional Qualifiers', 'Live qualification tracker against 2026/27 Somerset County and South West Regional benchmark standards (Competition Age as of 31/12/2027).'],
         'movements': ['Squad Movements & Training Schedules', 'Review current squad allocations, weekly pool training schedules, and weekend extra sessions.'],
         'calendar': ['Meet Calendar', 'Scheduled galas, target open meets, entry deadlines, and pool venues.']
     };
@@ -79,6 +85,10 @@ function switchView(viewId) {
         const descElem = document.getElementById('view-desc');
         if (titleElem) titleElem.innerText = titles[viewId][0];
         if (descElem) descElem.innerText = titles[viewId][1];
+    }
+
+    if (viewId === 'qualifiers') {
+        renderQualifiersDashboard();
     }
 }
 
@@ -865,6 +875,729 @@ function filterCalendar() {
     renderCalendar(filtered);
 }
 
+// =========================================================================
+// 8B. COUNTY & REGIONAL QUALIFIERS MODULE
+// =========================================================================
+
+let ALL_QUALIFIERS_DATA = [];
+let ACTIVE_QUALIFIERS_TIER_FILTER = 'ALL';
+
+function parseQualifierTimeSec(s) {
+    if (s === null || s === undefined) return null;
+    if (typeof s === 'number') return s;
+    const clean = String(s).trim();
+    if (!clean || clean === '-' || clean.toLowerCase() === 'none') return null;
+    const parts = clean.split(':');
+    try {
+        if (parts.length === 1) return parseFloat(parts[0]) || null;
+        if (parts.length === 2) return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]) || null;
+        if (parts.length === 3) return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseFloat(parts[2]) || null;
+    } catch (e) {
+        return null;
+    }
+    return null;
+}
+
+function formatQualifierSeconds(sec) {
+    if (sec === null || sec === undefined || isNaN(sec)) return '-';
+    const mins = Math.floor(sec / 60);
+    const rem = sec % 60;
+    if (mins > 0) {
+        return `${String(mins).padStart(2, '0')}:${rem.toFixed(2).padStart(5, '0')}`;
+    }
+    return rem.toFixed(2).padStart(5, '0');
+}
+
+function evaluateAllSwimmerQualifiers() {
+    const countyStds = window.COUNTY_STANDARDS || (typeof COUNTY_STANDARDS !== 'undefined' ? COUNTY_STANDARDS : null);
+    const regStds = window.REGIONAL_STANDARDS || (typeof REGIONAL_STANDARDS !== 'undefined' ? REGIONAL_STANDARDS : null);
+    if (!countyStds || !regStds) return [];
+
+    const rawData = (typeof RAW_SWIMMERS_DATA !== 'undefined' && RAW_SWIMMERS_DATA.length) 
+        ? RAW_SWIMMERS_DATA 
+        : (window.RAW_SWIMMERS_DATA || (typeof RAW_DATA !== 'undefined' ? RAW_DATA : (window.RAW_DATA || [])));
+    if (!rawData.length) return [];
+
+    const swimmersMeta = window.SWIMMERS_METADATA || (typeof SWIMMERS_METADATA !== 'undefined' ? SWIMMERS_METADATA : {});
+    const getStdEventName = window.getStandardEventName || (typeof getStandardEventName === 'function' ? getStandardEventName : (evt => evt));
+
+    // Fast map for regional standards: key = event_ageGroup_category_course
+    const regMap = new Map();
+    for (const r of regStds) {
+        regMap.set(`${r.event}_${r.ageGroup}_${r.category}_${r.course}`, r);
+    }
+
+    // Dynamic squad map from SQUAD_LIST_DATA if available
+    const activeSquadMap = new Map();
+    if (SQUAD_LIST_DATA && SQUAD_LIST_DATA.length > 0) {
+        const cols = Object.keys(SQUAD_LIST_DATA[0]);
+        cols.forEach(col => {
+            let cleanSquad = col.split('\n')[0].trim();
+            cleanSquad = cleanSquad.replace(/\s*\(Tues.*|\s*Tues.*/, '').trim();
+            SQUAD_LIST_DATA.forEach(r => {
+                const val = (r[col] || '').trim();
+                const hasSkipKeyword = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'am', 'pm', 'session', 'max number'].some(k => val.toLowerCase().includes(k));
+                if (val && !hasSkipKeyword) {
+                    activeSquadMap.set(val.toLowerCase(), cleanSquad);
+                }
+            });
+        });
+    }
+
+    // Group RAW_SWIMMERS_DATA by swimmerName and standardized event
+    const swimmerEvents = new Map();
+    for (const r of rawData) {
+        const stdEvt = getStdEventName(r.event);
+        const key = `${r.swimmerName}_${stdEvt}`;
+        if (!swimmerEvents.has(key)) swimmerEvents.set(key, []);
+        swimmerEvents.get(key).push({ ...r, standardEvent: stdEvt });
+    }
+
+    const evaluations = [];
+
+    for (const [key, records] of swimmerEvents.entries()) {
+        const swimmerName = records[0].swimmerName;
+        const event = records[0].standardEvent;
+        const seNum = records[0].seNumber;
+        const normKey = swimmerName.toLowerCase().trim();
+        const normClean = normKey.replace(/[^a-z0-9]/g, '');
+
+        // Resolve swimmer metadata
+        let meta = swimmersMeta[normKey] || swimmersMeta[normClean];
+        if (!meta) {
+            for (const k of Object.keys(swimmersMeta)) {
+                if (k.replace(/[^a-z0-9]/g, '') === normClean) {
+                    meta = swimmersMeta[k];
+                    break;
+                }
+            }
+        }
+        meta = meta || {};
+
+        const age = meta.age || null;
+        const cat = meta.category || 'Female';
+        const squad = activeSquadMap.get(normKey) || meta.squad || 'Club Swimmer';
+
+        if (!age) continue;
+
+        const ageStr = age >= 18 ? '18+' : String(age);
+        const regAgeStr = age < 11 ? null : (age <= 12 ? '11/12' : (age >= 18 ? '18+' : String(age)));
+
+        // Find swimmer's best SC swim (native SC or fastest converted SC from LC)
+        let scRec = null;
+        let scSec = null;
+        let isConverted = false;
+
+        const scRecords = records.filter(r => r.course === 'SC');
+        if (scRecords.length > 0) {
+            scRecords.sort((a, b) => (Number(a.timeSec) || parseQualifierTimeSec(a.displayTime) || Infinity) - (Number(b.timeSec) || parseQualifierTimeSec(b.displayTime) || Infinity));
+            scRec = scRecords[0];
+            scSec = Number(scRec.timeSec) || parseQualifierTimeSec(scRec.displayTime);
+        }
+
+        const lcRecords = records.filter(r => r.course === 'LC');
+        if (lcRecords.length > 0) {
+            for (const lc of lcRecords) {
+                const convSec = parseQualifierTimeSec(lc.convertedTime);
+                if (convSec && (!scSec || convSec < scSec)) {
+                    scSec = convSec;
+                    scRec = {
+                        ...lc,
+                        course: 'SC',
+                        displayTime: lc.convertedTime,
+                        timeSec: convSec,
+                        originalLCDisplay: lc.displayTime,
+                        isConverted: true
+                    };
+                    isConverted = true;
+                }
+            }
+        }
+
+        if (!scRec || !scSec) continue;
+
+        let bestEval = null;
+
+        // 1. Check against Short Course Regional standard
+        if (regAgeStr) {
+            const regStd = regMap.get(`${event}_${regAgeStr}_${cat}_SC`);
+            if (regStd) {
+                if (regStd.qtSec && scSec <= regStd.qtSec) {
+                    const diff = scSec - regStd.qtSec;
+                    const pct = (diff / regStd.qtSec) * 100;
+                    bestEval = {
+                        tier: 'Regional QT',
+                        tierPriority: 1,
+                        rec: scRec,
+                        targetSec: regStd.qtSec,
+                        targetDisplay: regStd.qtDisplay,
+                        targetName: 'Regional SC QT',
+                        diff,
+                        pct,
+                        course: 'SC',
+                        isConverted,
+                        isQualified: true
+                    };
+                } else if (regStd.cqtSec && scSec <= regStd.cqtSec) {
+                    const diff = scSec - regStd.cqtSec;
+                    const pct = (diff / regStd.cqtSec) * 100;
+                    bestEval = {
+                        tier: 'Regional CQT',
+                        tierPriority: 2,
+                        rec: scRec,
+                        targetSec: regStd.cqtSec,
+                        targetDisplay: regStd.cqtDisplay,
+                        targetName: 'Regional SC CQT',
+                        diff,
+                        pct,
+                        course: 'SC',
+                        isConverted,
+                        isQualified: true
+                    };
+                } else if (regStd.cqtSec && scSec <= regStd.cqtSec * 1.02) {
+                    const diff = scSec - regStd.cqtSec;
+                    const pct = (diff / regStd.cqtSec) * 100;
+                    bestEval = {
+                        tier: 'Within 2% CQT',
+                        tierPriority: 3,
+                        rec: scRec,
+                        targetSec: regStd.cqtSec,
+                        targetDisplay: regStd.cqtDisplay,
+                        targetName: 'Regional SC CQT',
+                        diff,
+                        pct,
+                        course: 'SC',
+                        isConverted,
+                        isQualified: false
+                    };
+                }
+            }
+        }
+
+        // 2. Check County standard (SC consideration times)
+        let hasCountyToo = false;
+        const countyStdObj = (countyStds[cat] || {})[event]?.[ageStr];
+        const countySec = countyStdObj?.seconds;
+        if (countySec && scSec <= countySec) {
+            hasCountyToo = true;
+            const diff = scSec - countySec;
+            const pct = (diff / countySec) * 100;
+            // Assign tier 'County Qualifier' only if not already Priority 1 (Regional QT), 2 (Regional CQT), or 3 (Within 2% CQT)
+            if (!bestEval || bestEval.tierPriority > 3) {
+                bestEval = {
+                    tier: 'County Qualifier',
+                    tierPriority: 4,
+                    rec: scRec,
+                    targetSec: countySec,
+                    targetDisplay: countyStdObj.display,
+                    targetName: 'County SC Time',
+                    diff,
+                    pct,
+                    course: 'SC',
+                    isConverted,
+                    isQualified: true
+                };
+            }
+        }
+
+        // 3. Swimmer in development: calculate margin towards County standard (or Regional SC CQT)
+        if (!bestEval) {
+            if (countySec) {
+                const diff = scSec - countySec;
+                const pct = (diff / countySec) * 100;
+                bestEval = {
+                    tier: 'Developing',
+                    tierPriority: 5,
+                    rec: scRec,
+                    targetSec: countySec,
+                    targetDisplay: countyStdObj.display,
+                    targetName: 'County SC Time',
+                    diff,
+                    pct,
+                    course: 'SC',
+                    isConverted,
+                    isQualified: false
+                };
+            } else if (regAgeStr) {
+                const regStd = regMap.get(`${event}_${regAgeStr}_${cat}_SC`);
+                if (regStd && regStd.cqtSec) {
+                    const diff = scSec - regStd.cqtSec;
+                    const pct = (diff / regStd.cqtSec) * 100;
+                    bestEval = {
+                        tier: 'Developing',
+                        tierPriority: 5,
+                        rec: scRec,
+                        targetSec: regStd.cqtSec,
+                        targetDisplay: regStd.cqtDisplay,
+                        targetName: 'Regional SC CQT',
+                        diff,
+                        pct,
+                        course: 'SC',
+                        isConverted,
+                        isQualified: false
+                    };
+                }
+            }
+        }
+
+        if (bestEval) {
+            evaluations.push({
+                swimmerName,
+                seNumber: seNum,
+                age,
+                category: cat,
+                squad,
+                event,
+                hasCountyToo,
+                allRecords: records,
+                ...bestEval
+            });
+        }
+    }
+
+    return evaluations;
+}
+
+function renderQualifiersDashboard() {
+    ALL_QUALIFIERS_DATA = evaluateAllSwimmerQualifiers();
+
+    // 1. Calculate & Render KPI Cards
+    const kpiCounts = {
+        regQT: { swims: 0, swimmers: new Set() },
+        regCQT: { swims: 0, swimmers: new Set() },
+        bubble: { swims: 0, swimmers: new Set() },
+        county: { swims: 0, swimmers: new Set() }
+    };
+
+    ALL_QUALIFIERS_DATA.forEach(r => {
+        if (r.tier === 'Regional QT') {
+            kpiCounts.regQT.swims++;
+            kpiCounts.regQT.swimmers.add(r.swimmerName);
+        } else if (r.tier === 'Regional CQT') {
+            kpiCounts.regCQT.swims++;
+            kpiCounts.regCQT.swimmers.add(r.swimmerName);
+        } else if (r.tier === 'Within 2% CQT') {
+            kpiCounts.bubble.swims++;
+            kpiCounts.bubble.swimmers.add(r.swimmerName);
+        }
+        
+        // County qualifier check
+        if (r.tier === 'County Qualifier' || r.hasCountyToo) {
+            kpiCounts.county.swims++;
+            kpiCounts.county.swimmers.add(r.swimmerName);
+        }
+    });
+
+    const elCountRegQT = document.getElementById('kpi-count-reg-qt');
+    const elSwimmersRegQT = document.getElementById('kpi-swimmers-reg-qt');
+    if (elCountRegQT) elCountRegQT.innerText = kpiCounts.regQT.swims;
+    if (elSwimmersRegQT) elSwimmersRegQT.innerText = `${kpiCounts.regQT.swimmers.size} Swimmer${kpiCounts.regQT.swimmers.size === 1 ? '' : 's'} Qualified`;
+
+    const elCountRegCQT = document.getElementById('kpi-count-reg-cqt');
+    const elSwimmersRegCQT = document.getElementById('kpi-swimmers-reg-cqt');
+    if (elCountRegCQT) elCountRegCQT.innerText = kpiCounts.regCQT.swims;
+    if (elSwimmersRegCQT) elSwimmersRegCQT.innerText = `${kpiCounts.regCQT.swimmers.size} Swimmer${kpiCounts.regCQT.swimmers.size === 1 ? '' : 's'} Qualified`;
+
+    const elCountBubble = document.getElementById('kpi-count-bubble');
+    const elSwimmersBubble = document.getElementById('kpi-swimmers-bubble');
+    if (elCountBubble) elCountBubble.innerText = kpiCounts.bubble.swims;
+    if (elSwimmersBubble) elSwimmersBubble.innerText = `${kpiCounts.bubble.swimmers.size} Swimmer${kpiCounts.bubble.swimmers.size === 1 ? '' : 's'} in striking distance`;
+
+    const elCountCounty = document.getElementById('kpi-count-county');
+    const elSwimmersCounty = document.getElementById('kpi-swimmers-county');
+    if (elCountCounty) elCountCounty.innerText = kpiCounts.county.swims;
+    if (elSwimmersCounty) elSwimmersCounty.innerText = `${kpiCounts.county.swimmers.size} Swimmer${kpiCounts.county.swimmers.size === 1 ? '' : 's'} Qualified`;
+
+    const overviewBadge = document.getElementById('overview-qualifiers-badge');
+    if (overviewBadge) {
+        overviewBadge.innerText = `${kpiCounts.regQT.swims + kpiCounts.regCQT.swims + kpiCounts.bubble.swims + kpiCounts.county.swims} Target Swims Tracked`;
+    }
+
+    populateQualifiersFilterOptions();
+    filterQualifiers();
+}
+
+function populateQualifiersFilterOptions() {
+    const swimmerSelect = document.getElementById('qualifiers-swimmer-select');
+    if (swimmerSelect) {
+        const currentSwimmer = swimmerSelect.value;
+        const swimmers = Array.from(new Set(ALL_QUALIFIERS_DATA.map(r => r.swimmerName).filter(Boolean))).sort();
+        swimmerSelect.innerHTML = `<option value="ALL">All Swimmers (${swimmers.length})</option>` +
+            swimmers.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (currentSwimmer && Array.from(swimmerSelect.options).some(o => o.value === currentSwimmer)) {
+            swimmerSelect.value = currentSwimmer;
+        }
+    }
+
+    const squadSelect = document.getElementById('qualifiers-squad-select');
+    if (!squadSelect) return;
+
+    const currentVal = squadSelect.value;
+    const squads = Array.from(new Set(ALL_QUALIFIERS_DATA.map(r => r.squad).filter(Boolean))).sort();
+
+    squadSelect.innerHTML = `<option value="ALL">All Squads (${squads.length})</option>` +
+        squads.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    if (currentVal && Array.from(squadSelect.options).some(o => o.value === currentVal)) {
+        squadSelect.value = currentVal;
+    }
+}
+
+function setQualifiersTierFilter(tierName) {
+    const statusSelect = document.getElementById('qualifiers-status-select');
+    if (statusSelect) {
+        statusSelect.value = tierName;
+    }
+    ACTIVE_QUALIFIERS_TIER_FILTER = tierName;
+
+    // Highlight active KPI card
+    document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('active-kpi'));
+    if (tierName === 'Regional QT') document.getElementById('kpi-card-reg-qt')?.classList.add('active-kpi');
+    else if (tierName === 'Regional CQT') document.getElementById('kpi-card-reg-cqt')?.classList.add('active-kpi');
+    else if (tierName === 'Within 2% CQT') document.getElementById('kpi-card-bubble')?.classList.add('active-kpi');
+    else if (tierName === 'County Qualifier') document.getElementById('kpi-card-county')?.classList.add('active-kpi');
+
+    filterQualifiers();
+
+    // Smooth scroll to table
+    document.getElementById('qualifiers-table')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function resetQualifiersFilters() {
+    const searchInput = document.getElementById('qualifiers-search-input');
+    const swimmerSelect = document.getElementById('qualifiers-swimmer-select');
+    const squadSelect = document.getElementById('qualifiers-squad-select');
+    const catSelect = document.getElementById('qualifiers-cat-select');
+    const ageSelect = document.getElementById('qualifiers-age-select');
+    const statusSelect = document.getElementById('qualifiers-status-select');
+    const sortSelect = document.getElementById('qualifiers-sort-select');
+
+    if (searchInput) searchInput.value = '';
+    if (swimmerSelect) swimmerSelect.value = 'ALL';
+    if (squadSelect) squadSelect.value = 'ALL';
+    if (catSelect) catSelect.value = 'ALL';
+    if (ageSelect) ageSelect.value = 'ALL';
+    if (statusSelect) statusSelect.value = 'ALL';
+    if (sortSelect) sortSelect.value = 'margin_asc';
+
+    document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('active-kpi'));
+    ACTIVE_QUALIFIERS_TIER_FILTER = 'ALL';
+
+    filterQualifiers();
+}
+
+function filterQualifiers() {
+    const tbody = document.querySelector('#qualifiers-table tbody');
+    if (!tbody) return;
+
+    const q = (document.getElementById('qualifiers-search-input')?.value || '').toLowerCase().trim();
+    const swimmerVal = document.getElementById('qualifiers-swimmer-select')?.value || 'ALL';
+    const squadVal = document.getElementById('qualifiers-squad-select')?.value || 'ALL';
+    const catVal = document.getElementById('qualifiers-cat-select')?.value || 'ALL';
+    const ageVal = document.getElementById('qualifiers-age-select')?.value || 'ALL';
+    const statusVal = document.getElementById('qualifiers-status-select')?.value || 'ALL';
+    const sortVal = document.getElementById('qualifiers-sort-select')?.value || 'margin_asc';
+
+    let filtered = ALL_QUALIFIERS_DATA.filter(r => {
+        // Swimmer Select Dropdown
+        if (swimmerVal !== 'ALL' && r.swimmerName !== swimmerVal) return false;
+
+        // Search text
+        if (q) {
+            const matchName = r.swimmerName.toLowerCase().includes(q);
+            const matchEvent = r.event.toLowerCase().includes(q);
+            const matchSquad = (r.squad || '').toLowerCase().includes(q);
+            if (!matchName && !matchEvent && !matchSquad) return false;
+        }
+
+        // Squad
+        if (squadVal !== 'ALL' && r.squad !== squadVal) return false;
+
+        // Category
+        if (catVal !== 'ALL' && r.category !== catVal) return false;
+
+        // Age Group
+        if (ageVal !== 'ALL') {
+            if (ageVal === '11/12') {
+                if (r.age !== 11 && r.age !== 12) return false;
+            } else if (ageVal === '18+') {
+                if (r.age < 18) return false;
+            } else {
+                if (String(r.age) !== ageVal) return false;
+            }
+        }
+
+        // Status Tier
+        if (statusVal === 'ALL') {
+            // Default view shows all actual qualifiers and bubble swims
+            // If user explicitly searched or selected a specific swimmer, show all their events (including Developing)
+            if (!q && swimmerVal === 'ALL' && r.tier === 'Developing') return false;
+        } else if (statusVal === 'ALL_INCLUDING_DEV') {
+            // Keep all
+        } else if (statusVal === 'County Qualifier') {
+            if (r.tier !== 'County Qualifier' && !r.hasCountyToo) return false;
+        } else {
+            if (r.tier !== statusVal) return false;
+        }
+
+        return true;
+    });
+
+    // Sorting
+    filtered.sort((a, b) => {
+        if (sortVal === 'margin_asc') {
+            // Keep actual qualifiers & bubble above developing swims
+            if (a.tier === 'Developing' && b.tier !== 'Developing') return 1;
+            if (a.tier !== 'Developing' && b.tier === 'Developing') return -1;
+
+            // Bring closest to qualifying (bubble swims with smallest positive deficit) to top,
+            // then already qualified swims sorted by margin under standard!
+            if (a.diff >= 0 && b.diff >= 0) return a.diff - b.diff;
+            if (a.diff >= 0 && b.diff < 0) return -1;
+            if (a.diff < 0 && b.diff >= 0) return 1;
+            return a.diff - b.diff; // larger negative under standard
+        } else if (sortVal === 'name_asc') {
+            return a.swimmerName.localeCompare(b.swimmerName) || a.event.localeCompare(b.event);
+        } else if (sortVal === 'event_asc') {
+            return a.event.localeCompare(b.event) || a.swimmerName.localeCompare(b.swimmerName);
+        } else if (sortVal === 'tier_desc') {
+            return a.tierPriority - b.tierPriority || a.diff - b.diff;
+        }
+        return 0;
+    });
+
+    // Update Result Counter & Active Filter Pills
+    const countEl = document.getElementById('qualifiers-result-count');
+    const pillEl = document.getElementById('qualifiers-active-filter-pill');
+    const uniqueSwimmers = new Set(filtered.map(r => r.swimmerName)).size;
+
+    if (countEl) {
+        countEl.innerHTML = `Showing <strong>${filtered.length}</strong> target swim${filtered.length === 1 ? '' : 's'} across <strong>${uniqueSwimmers}</strong> swimmer${uniqueSwimmers === 1 ? '' : 's'}`;
+    }
+
+    if (pillEl) {
+        const activeFilters = [];
+        if (swimmerVal !== 'ALL') activeFilters.push(`Swimmer: ${swimmerVal}`);
+        if (q) activeFilters.push(`Search: "${q}"`);
+        if (squadVal !== 'ALL') activeFilters.push(`Squad: ${squadVal}`);
+        if (catVal !== 'ALL') activeFilters.push(`Cat: ${catVal}`);
+        if (ageVal !== 'ALL') activeFilters.push(`Age: ${ageVal}`);
+        if (statusVal !== 'ALL') activeFilters.push(`Tier: ${statusVal}`);
+        pillEl.innerHTML = activeFilters.length ? `Filtered by: ${activeFilters.join(' • ')}` : '';
+    }
+
+    if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:3rem;">No swimmer qualifying records match your selected filters.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(r => {
+        // Course Badge
+        const courseBadge = r.isConverted
+            ? `<span style="background:rgba(217,119,6,0.15); color:var(--accent-amber); border:1px solid var(--accent-amber); padding:0.15rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;" title="Converted to Short Course from LC ${r.rec.originalLCDisplay || ''}">25m (SC Conv)</span>`
+            : `<span style="background:rgba(217,119,6,0.15); color:var(--accent-amber); border:1px solid var(--accent-amber); padding:0.15rem 0.45rem; border-radius:4px; font-weight:700; font-size:0.75rem;">25m (SC)</span>`;
+
+        // Status Badge
+        let badgeHTML = '';
+        if (r.tier === 'Regional QT') {
+            badgeHTML = `<span class="tier-badge tier-reg-qt">🌟 Regional QT</span>`;
+        } else if (r.tier === 'Regional CQT') {
+            badgeHTML = `<span class="tier-badge tier-reg-cqt">🏅 Regional CQT</span>`;
+        } else if (r.tier === 'Within 2% CQT') {
+            const countyChip = r.hasCountyToo ? `<span style="font-size:0.65rem; color:var(--accent-purple); font-weight:700; margin-left:0.3rem;">• 🏆 County QT</span>` : '';
+            badgeHTML = `<span class="tier-badge tier-bubble">⚡ Within 2% CQT</span>${countyChip}`;
+        } else if (r.tier === 'County Qualifier') {
+            badgeHTML = `<span class="tier-badge tier-county">🏆 County Qualifier</span>`;
+        } else {
+            badgeHTML = `<span class="tier-badge" style="background:rgba(255,255,255,0.06); color:var(--text-muted); border:1px solid rgba(255,255,255,0.15);">🌱 Chasing ${r.targetName}</span>`;
+        }
+
+        // Margin Pill
+        let marginHTML = '';
+        if (r.diff <= 0) {
+            marginHTML = `<span style="color:var(--accent-emerald); font-weight:700; font-family:monospace;">✓ ${r.diff.toFixed(2)}s (${r.pct.toFixed(1)}%)</span>`;
+        } else if (r.tier === 'Within 2% CQT') {
+            marginHTML = `<span style="color:var(--accent-amber); font-weight:700; font-family:monospace;">+${r.diff.toFixed(2)}s off CQT (${r.pct.toFixed(1)}% away)</span>`;
+        } else {
+            marginHTML = `<span style="color:var(--text-muted); font-weight:600; font-family:monospace;">+${r.diff.toFixed(2)}s off ${r.targetName} (${r.pct.toFixed(1)}%)</span>`;
+        }
+
+        const safeSwimmerName = r.swimmerName.replace(/'/g, "\\'");
+        const swimmerLink = `<a href="javascript:void(0)" onclick="openQualifierSwimmerModal('${safeSwimmerName}')" style="color:var(--text-main); font-weight:700; text-decoration:none; border-bottom:1px dashed var(--accent-cyan);" title="Click to view full milestone breakdown for ${r.swimmerName}">${r.swimmerName} 📊</a>`;
+
+        return `
+            <tr>
+                <td>${swimmerLink}</td>
+                <td><span style="font-size:0.8rem; background:rgba(255,255,255,0.05); padding:0.2rem 0.5rem; border-radius:6px; color:var(--text-muted);">${r.squad || '-'}</span></td>
+                <td><span style="font-size:0.8rem; font-weight:600; color:var(--text-main);">${r.age} yrs • ${r.category === 'Female' ? 'F' : 'M'}</span></td>
+                <td style="font-weight:600;">${r.event}</td>
+                <td>${courseBadge}</td>
+                <td style="font-family:monospace; font-weight:700; color:var(--accent-cyan); font-size:0.95rem;">${r.rec.displayTime || '-'}</td>
+                <td style="font-family:monospace; font-size:0.85rem; color:var(--text-muted);">${r.targetDisplay || '-'} <span style="font-size:0.75rem; color:var(--text-main); font-family:sans-serif;">(${r.targetName})</span></td>
+                <td>${badgeHTML}</td>
+                <td>${marginHTML}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function openQualifierSwimmerModal(swimmerName) {
+    const norm = swimmerName.toLowerCase().trim();
+    const records = ALL_QUALIFIERS_DATA.filter(r => r.swimmerName.toLowerCase().trim() === norm);
+    if (!records.length) return;
+
+    const countyStds = window.COUNTY_STANDARDS || (typeof COUNTY_STANDARDS !== 'undefined' ? COUNTY_STANDARDS : {});
+    const regStds = window.REGIONAL_STANDARDS || (typeof REGIONAL_STANDARDS !== 'undefined' ? REGIONAL_STANDARDS : []);
+    const swimmersMeta = window.SWIMMERS_METADATA || (typeof SWIMMERS_METADATA !== 'undefined' ? SWIMMERS_METADATA : {});
+    const meta = swimmersMeta[norm] || swimmersMeta[norm.replace(/[^a-z0-9]/g, '')] || {};
+
+    const first = records[0];
+    const age = first.age;
+    const cat = first.category;
+    const seNum = first.seNumber || meta.seNumber || '';
+    const squad = first.squad;
+
+    const nameEl = document.getElementById('qualifier-modal-name');
+    const subEl = document.getElementById('qualifier-modal-sub');
+    const bodyEl = document.getElementById('qualifier-modal-body');
+
+    if (nameEl) nameEl.innerText = `🏊 ${first.swimmerName} - Qualification Breakdown`;
+    if (subEl) {
+        const seLink = seNum 
+            ? `<a href="https://www.swimmingresults.org/individualbest/personal_best_time_date.php?back=individualbest&tiref=${seNum}&mode=A" target="_blank" rel="noopener noreferrer" style="color:var(--accent-cyan); text-decoration:underline;">Swim England Profile (${seNum}) 🔗</a>`
+            : '';
+        subEl.innerHTML = `Squad: <strong style="color:var(--accent-cyan);">${squad}</strong> &bull; Competition Age: <strong>${age} yrs (as of 31/12/27)</strong> (${cat}) &bull; ${seLink}`;
+    }
+
+    // Milestone count summary pills
+    const regQTCount = records.filter(r => r.tier === 'Regional QT').length;
+    const regCQTCount = records.filter(r => r.tier === 'Regional CQT').length;
+    const bubbleCount = records.filter(r => r.tier === 'Within 2% CQT').length;
+    const countyCount = records.filter(r => r.tier === 'County Qualifier' || r.hasCountyToo).length;
+    const devCount = records.filter(r => r.tier === 'Developing').length;
+
+    let summaryBadgesHTML = `
+        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1.25rem;">
+            <div style="background:rgba(16,185,129,0.12); border:1px solid var(--accent-emerald); padding:0.4rem 0.8rem; border-radius:8px; font-size:0.8rem; font-weight:700; color:var(--accent-emerald);">
+                🌟 ${regQTCount} Regional Auto QT${regQTCount === 1 ? '' : 's'}
+            </div>
+            <div style="background:rgba(59,130,246,0.12); border:1px solid var(--accent-blue); padding:0.4rem 0.8rem; border-radius:8px; font-size:0.8rem; font-weight:700; color:var(--accent-blue);">
+                🏅 ${regCQTCount} Regional CQT${regCQTCount === 1 ? '' : 's'}
+            </div>
+            <div style="background:rgba(245,158,11,0.12); border:1px solid var(--accent-amber); padding:0.4rem 0.8rem; border-radius:8px; font-size:0.8rem; font-weight:700; color:var(--accent-amber);">
+                ⚡ ${bubbleCount} On the Bubble (≤ 2%)
+            </div>
+            <div style="background:rgba(139,92,246,0.12); border:1px solid var(--accent-purple); padding:0.4rem 0.8rem; border-radius:8px; font-size:0.8rem; font-weight:700; color:var(--accent-purple);">
+                🏆 ${countyCount} County Standard${countyCount === 1 ? '' : 's'}
+            </div>
+            ${devCount > 0 ? `
+            <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.4rem 0.8rem; border-radius:8px; font-size:0.8rem; font-weight:700; color:var(--text-muted);">
+                🌱 ${devCount} Chasing Target
+            </div>` : ''}
+        </div>
+    `;
+
+    // Event cards with visual progress bars
+    const ageStr = age >= 18 ? '18+' : String(age);
+    const regAgeStr = age < 11 ? null : (age <= 12 ? '11/12' : (age >= 18 ? '18+' : String(age)));
+
+    const eventCardsHTML = records.map(r => {
+        const pbSec = Number(r.rec.timeSec) || parseQualifierTimeSec(r.rec.displayTime);
+        const course = r.course;
+
+        // Standards for this event
+        const countyStdObj = (countyStds[cat] || {})[r.event]?.[ageStr];
+        const countySec = countyStdObj?.seconds || null;
+
+        let regCQT = null;
+        let regQT = null;
+        if (regAgeStr && Array.isArray(regStds)) {
+            const regStd = regStds.find(s => s.event === r.event && s.ageGroup === regAgeStr && s.category === cat && s.course === 'SC');
+            if (regStd) {
+                regCQT = regStd.cqtSec;
+                regQT = regStd.qtSec;
+            }
+        }
+
+        // Calculate progress percentage and styling
+        let progressPct = 0;
+        let progressColor = 'var(--accent-cyan)';
+        let statusText = '';
+
+        if (r.tier === 'Regional QT') {
+            progressPct = 100;
+            progressColor = 'var(--accent-emerald)';
+            statusText = `<span style="color:var(--accent-emerald); font-weight:700;">🌟 Achieved Regional Auto QT! (${Math.abs(r.diff).toFixed(2)}s faster)</span>`;
+        } else if (r.tier === 'Regional CQT') {
+            progressPct = 90;
+            progressColor = 'var(--accent-blue)';
+            const diffToQT = regQT ? ` • Just ${(pbSec - regQT).toFixed(2)}s away from Auto QT!` : '';
+            statusText = `<span style="color:var(--accent-blue); font-weight:700;">🏅 Achieved Regional Consideration (CQT)!${diffToQT}</span>`;
+        } else if (r.tier === 'Within 2% CQT') {
+            progressPct = 82;
+            progressColor = 'var(--accent-amber)';
+            statusText = `<span style="color:var(--accent-amber); font-weight:700;">⚡ On the Bubble! Just +${r.diff.toFixed(2)}s off Regional CQT (${r.pct.toFixed(1)}% away)</span>`;
+        } else if (r.tier === 'County Qualifier') {
+            progressPct = 65;
+            progressColor = 'var(--accent-purple)';
+            const diffToCQT = regCQT ? ` • ${(pbSec - regCQT).toFixed(2)}s to Regional CQT` : '';
+            statusText = `<span style="color:var(--accent-purple); font-weight:700;">🏆 County Consideration Achieved!${diffToCQT}</span>`;
+        } else {
+            progressPct = Math.max(15, Math.min(55, Math.round(100 - (r.pct || 10))));
+            progressColor = 'var(--text-muted)';
+            statusText = `<span style="color:var(--text-muted); font-weight:600;">🌱 Developing: +${r.diff.toFixed(2)}s off ${r.targetName} (${r.pct.toFixed(1)}%)</span>`;
+        }
+
+        const courseBadge = r.isConverted
+            ? `<span style="background:rgba(217,119,6,0.15); color:var(--accent-amber); border:1px solid var(--accent-amber); padding:0.1rem 0.4rem; border-radius:4px; font-weight:700; font-size:0.7rem;" title="Converted from LC ${r.rec.originalLCDisplay || ''}">25m (SC Conv)</span>`
+            : `<span style="background:rgba(217,119,6,0.15); color:var(--accent-amber); border:1px solid var(--accent-amber); padding:0.1rem 0.4rem; border-radius:4px; font-weight:700; font-size:0.7rem;">25m (SC)</span>`;
+
+        const seEventUrl = buildSwimEnglandHistoryUrl(seNum, r.event, course);
+
+        return `
+            <div style="background: rgba(15,23,42,0.65); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem 1.15rem; margin-bottom: 0.85rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.4rem;">
+                    <div>
+                        <span style="font-weight:700; font-size:0.95rem; color:var(--text-main);">${r.event}</span>
+                        <span style="margin-left:0.4rem;">${courseBadge}</span>
+                    </div>
+                    <div style="font-family:monospace; font-size:1.15rem; font-weight:800; color:var(--accent-cyan);">
+                        ${r.rec.displayTime}
+                    </div>
+                </div>
+
+                <!-- Milestone Progress Bar -->
+                <div class="progress-track" style="margin: 0.75rem 0 0.4rem;">
+                    <div class="progress-fill" style="width: ${progressPct}%; background: ${progressColor};"></div>
+                </div>
+
+                <!-- Milestone Labels -->
+                <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:0.6rem;">
+                    <span>County (${ageStr}y): <strong>${countyStdObj ? countyStdObj.display : 'N/A'}</strong></span>
+                    <span>Reg CQT (${regAgeStr ? regAgeStr + 'y' : 'N/A'}): <strong>${regCQT ? formatQualifierSeconds(regCQT) : 'N/A'}</strong></span>
+                    <span>Reg QT (${regAgeStr ? regAgeStr + 'y' : 'N/A'}): <strong>${regQT ? formatQualifierSeconds(regQT) : 'N/A'}</strong></span>
+                </div>
+
+                <!-- Status Note & Progression Link -->
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.775rem; border-top:1px dashed rgba(255,255,255,0.08); padding-top:0.5rem; margin-top:0.25rem; flex-wrap:wrap; gap:0.5rem;">
+                    <div>${statusText}</div>
+                    <a href="${seEventUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-cyan); text-decoration:underline; font-weight:600;">📊 Official SE Progression 🔗</a>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (bodyEl) {
+        bodyEl.innerHTML = summaryBadgesHTML + eventCardsHTML;
+    }
+
+    document.getElementById('qualifier-breakdown-modal')?.classList.remove('hidden');
+}
+
+function closeQualifierSwimmerModal() {
+    document.getElementById('qualifier-breakdown-modal')?.classList.add('hidden');
+}
+
 // 9. CLUB NOTICES MODULE
 let NOTICES_DATA = [];
 
@@ -1065,7 +1798,13 @@ function closeNoticesModal() {
 function initDashboard() {
     try {
         const rawData = window.MASTER_DASHBOARD_DATA || (typeof MASTER_DASHBOARD_DATA !== 'undefined' ? MASTER_DASHBOARD_DATA : null);
-        RAW_SWIMMERS_DATA = window.RAW_DATA || (typeof RAW_DATA !== 'undefined' ? RAW_DATA : []);
+        RAW_SWIMMERS_DATA = (typeof RAW_DATA !== 'undefined' && RAW_DATA.length) 
+            ? RAW_DATA 
+            : (window.RAW_DATA || window.RAW_SWIMMERS_DATA || []);
+        if (typeof window !== 'undefined') {
+            window.RAW_SWIMMERS_DATA = RAW_SWIMMERS_DATA;
+            window.RAW_DATA = RAW_SWIMMERS_DATA;
+        }
 
         if (rawData) {
             CALENDAR_DATA = getDataset(rawData, ["Calendar", "Gala Calendar", "Events", "Gala_Calendar", "Meet Calendar", "Schedule"]);
@@ -1099,6 +1838,7 @@ function initDashboard() {
             populateSwimmersDropdowns(RAW_SWIMMERS_DATA);
             filterSwimmers();
         }
+        if (document.getElementById('qualifiers-table')) renderQualifiersDashboard();
         if (document.getElementById('squad-grid')) renderSquadList();
         if (document.getElementById('calendar-table-body')) renderCalendar();
 
@@ -1195,6 +1935,7 @@ async function loadLiveSquadMovements() {
                     populateSwimmersDropdowns(RAW_SWIMMERS_DATA, true);
                     filterSwimmers();
                 }
+                if (document.getElementById('qualifiers-table')) renderQualifiersDashboard();
             }
         }
     } catch (e) {
@@ -1206,6 +1947,12 @@ async function loadLiveSquadMovements() {
 window.switchView = switchView;
 window.filterSwimmers = filterSwimmers;
 window.filterCalendar = filterCalendar;
+window.filterQualifiers = filterQualifiers;
+window.resetQualifiersFilters = resetQualifiersFilters;
+window.setQualifiersTierFilter = setQualifiersTierFilter;
+window.openQualifierSwimmerModal = openQualifierSwimmerModal;
+window.closeQualifierSwimmerModal = closeQualifierSwimmerModal;
+window.renderQualifiersDashboard = renderQualifiersDashboard;
 window.EVENT_STROKE_MAP = EVENT_STROKE_MAP;
 window.buildSwimEnglandHistoryUrl = buildSwimEnglandHistoryUrl;
 window.openSwimmerModal = openSwimmerModal;
