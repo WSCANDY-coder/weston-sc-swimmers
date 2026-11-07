@@ -395,8 +395,6 @@
         <li id="tab-qualifiers" class="nav-item" onclick="switchView('qualifiers')">🏅 County & Regional</li>
         <li id="tab-movements" class="nav-item" onclick="switchView('movements')">📊 Squad Movements</li>
         <li id="tab-calendar" class="nav-item" onclick="switchView('calendar')">📅 Meet Calendar</li>
-        <li id="tab-arena-predict" class="nav-item" onclick="window.location.href='ScorePredictionView.html'">⚡ Arena Predictor</li>
-        <li id="tab-arena-tactics" class="nav-item" onclick="window.location.href='components/TacticalDashboardView.html'">🎯 Tactical Optimizer</li>
       </ul>
     </nav>
   </header>
@@ -459,24 +457,6 @@
             <div class="card-desc">Scheduled galas, target open meets, entry deadlines, and venue details.</div>
           </div>
           <span class="card-badge" id="overview-calendar-badge">Calendar Events</span>
-        </div>
-
-        <div class="card-btn arena-predict" style="border-top: 4px solid var(--accent-cyan); cursor: pointer;" onclick="window.location.href='ScorePredictionView.html'">
-          <div>
-            <div class="card-icon">⚡</div>
-            <div class="card-title">Arena Race Manager (Predictor)</div>
-            <div class="card-desc">Predict finish positions, cumulative points, Monte Carlo simulation, swing events, and relay splits.</div>
-          </div>
-          <span class="card-badge" style="background: rgba(6,182,212,0.15); color: var(--accent-cyan); border-color: var(--accent-cyan);">Division 1 Gala 1 Lineup</span>
-        </div>
-
-        <div class="card-btn arena-tactics" style="border-top: 4px solid var(--accent-rose); cursor: pointer;" onclick="window.location.href='components/TacticalDashboardView.html'">
-          <div>
-            <div class="card-icon">🎯</div>
-            <div class="card-title">Tactical Lineup Optimizer</div>
-            <div class="card-desc">Interactive swimmer swapper, high-risk race alerts (&lt;0.35s), easy pickups (&lt;0.50s), and raw OCR gala importer.</div>
-          </div>
-          <span class="card-badge" style="background: rgba(244,63,94,0.15); color: var(--accent-rose); border-color: var(--accent-rose);">Dynamic Swapper &amp; Importer</span>
         </div>
       </div>
     </div>
