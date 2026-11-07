@@ -4762,44 +4762,69 @@ const MASTER_DASHBOARD_DATA = {
   ],
   "Calendar": [
     {
-      "Date": "2026-09-19",
-      "Event": "IM & Relays",
-      "Where": "Millfield"
-    },
-    {
-      "Date": "2026-10-03",
-      "Event": "Four Seasons galas -13 & under",
-      "Where": "Hutton Moor"
-    },
-    {
-      "Date": "2026-10-10",
+      "Date": "14 November 2026",
       "Event": "Arena League",
-      "Where": "Hutton Moor"
+      "Where": "Plymouth"
     },
     {
-      "Date": "2026-10-24",
-      "Event": "City of Bristol Halloween Spooktacular",
+      "Date": "21 November 2026",
+      "Event": "BSG Level 2 National Winter Qualifier",
       "Where": "Hengrove"
     },
     {
-      "Date": "2026-11-14",
+      "Date": "5 December 2026",
       "Event": "Arena League",
-      "Where": "TBA"
+      "Where": "TBC"
     },
     {
-      "Date": "2026-11-21",
-      "Event": "BSG National Winter Qualifier",
-      "Where": "Hengrove"
+      "Date": "28 November 2026",
+      "Event": "Taunton Deane Level 3 County Qualifier",
+      "Where": "Hutton Moore"
     },
     {
-      "Date": "2026-12-05",
-      "Event": "Arena League",
-      "Where": "TBA"
+      "Date": "12 December 2026",
+      "Event": "Newport Christmas Cracker 2026",
+      "Where": "Newport"
     },
     {
-      "Date": "Mid Dec",
-      "Event": "Yeovil District Swimming Club (YDSC) Christmas Open Meet",
+      "Date": "17 January 2027",
+      "Event": "Age Groups and County Championships",
       "Where": "Millfield"
+    },
+    {
+      "Date": "23 January 2027",
+      "Event": "Age Groups and County Championships",
+      "Where": "Millfield"
+    },
+    {
+      "Date": "24 January 2027",
+      "Event": "Age Groups and County Championships",
+      "Where": "Millfield"
+    },
+    {
+      "Date": "6 February 2027",
+      "Event": "Age Groups and County Championships",
+      "Where": "Millfield"
+    },
+    {
+      "Date": "7 February 2027",
+      "Event": "Age Groups and County Championships",
+      "Where": "Millfield"
+    },
+    {
+      "Date": "27 February 2027",
+      "Event": "Fourseasons",
+      "Where": "Hutton Moore"
+    },
+    {
+      "Date": "17 April 2027",
+      "Event": "Fourseasons",
+      "Where": "Hutton Moore"
+    },
+    {
+      "Date": "4 July 2027",
+      "Event": "Fourseasons",
+      "Where": "Hutton Moore"
     }
   ]
 };

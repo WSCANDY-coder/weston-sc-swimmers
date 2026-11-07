@@ -89,6 +89,8 @@ function switchView(viewId) {
 
     if (viewId === 'qualifiers') {
         renderQualifiersDashboard();
+    } else if (viewId === 'calendar') {
+        renderCalendar();
     }
 }
 
@@ -110,13 +112,23 @@ function getRowVal(row, possibleKeys) {
 
 function formatDateDDMMYYYY(dateStr) {
     if (!dateStr) return '-';
-    const cleanStr = String(dateStr).trim().split('T')[0].split(' ')[0];
-    const parts = cleanStr.split('-');
-    if (parts.length === 3 && parts[0].length === 4) {
-        const [year, month, day] = parts;
-        return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+    const s = String(dateStr).trim();
+    const isoMatch = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+    if (isoMatch) {
+        return `${isoMatch[3].padStart(2, '0')}/${isoMatch[2].padStart(2, '0')}/${isoMatch[1]}`;
     }
-    return cleanStr || '-';
+    const dmyMatch = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+    if (dmyMatch) {
+        return `${dmyMatch[1].padStart(2, '0')}/${dmyMatch[2].padStart(2, '0')}/${dmyMatch[3]}`;
+    }
+    const parsedDate = new Date(s);
+    if (!isNaN(parsedDate.getTime()) && !/^\d+$/.test(s)) {
+        const day = String(parsedDate.getDate()).padStart(2, '0');
+        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const year = parsedDate.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+    return s || '-';
 }
 
 function parseRecordDate(dateStr) {
@@ -1831,6 +1843,7 @@ function initDashboard() {
         }
 
         loadLiveSquadMovements();
+        loadLiveMeetCalendar();
 
         applyAppSettings();
 
@@ -1943,10 +1956,38 @@ async function loadLiveSquadMovements() {
     }
 }
 
+const GOOGLE_SHEET_CALENDAR_CSV_URL = 'https://docs.google.com/spreadsheets/d/12GF4qAlknzEI-ZNsyTRozLV0d4qx1ewU__Y2yfKT_Fo/export?format=csv&gid=436293374';
+
+let isFetchingCalendar = false;
+async function loadLiveMeetCalendar() {
+    if (isFetchingCalendar) return;
+    isFetchingCalendar = true;
+    try {
+        const response = await fetch(GOOGLE_SHEET_CALENDAR_CSV_URL + '&t=' + Date.now());
+        if (response.ok) {
+            const csvText = await response.text();
+            const parsed = parseCsvToObjects(csvText);
+            if (parsed && parsed.length > 0) {
+                CALENDAR_DATA = parsed;
+                if (document.getElementById('calendar-table-body')) renderCalendar();
+                const calendarBadge = document.getElementById('overview-calendar-badge');
+                if (calendarBadge) calendarBadge.innerText = `${CALENDAR_DATA.length} Events Scheduled`;
+                const indicator = document.getElementById('calendar-sync-indicator');
+                if (indicator) indicator.style.display = 'inline-flex';
+            }
+        }
+    } catch (e) {
+        console.warn("Could not load live Google Sheet Meet Calendar, using local dataset fallback:", e);
+    } finally {
+        isFetchingCalendar = false;
+    }
+}
+
 // Global Exports
 window.switchView = switchView;
 window.filterSwimmers = filterSwimmers;
 window.filterCalendar = filterCalendar;
+window.loadLiveMeetCalendar = loadLiveMeetCalendar;
 window.filterQualifiers = filterQualifiers;
 window.resetQualifiersFilters = resetQualifiersFilters;
 window.setQualifiersTierFilter = setQualifiersTierFilter;
