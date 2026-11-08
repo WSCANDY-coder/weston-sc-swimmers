@@ -378,6 +378,169 @@
       .controls-row { flex-direction: column; }
       .search-input, .select-input { width: 100%; }
     }
+
+    /* --- SWIMMER REPORT & PRINT STYLES --- */
+    .print-report-container {
+      background: transparent;
+      color: var(--text-main);
+    }
+    .report-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .report-kpi-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      text-align: left;
+    }
+    .report-kpi-val {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.2;
+    }
+    .report-kpi-lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      margin-top: 0.25rem;
+    }
+    .drop-good {
+      color: var(--accent-emerald);
+      font-weight: 800;
+      font-family: monospace;
+    }
+    .drop-neutral {
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    .drop-warn {
+      color: var(--accent-amber);
+      font-family: monospace;
+    }
+    .event-pill-qual {
+      display: inline-block;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid var(--accent-emerald);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      margin: 0.15rem;
+    }
+    .event-pill-slower {
+      display: inline-block;
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      margin: 0.15rem;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+      }
+      header.top-navbar, .top-bar, .controls-row, .modal-close, .modal-actions, .no-print, button {
+        display: none !important;
+      }
+      #swimmer-report-modal, #swimmer-report-modal * {
+        visibility: visible;
+      }
+      #swimmer-report-modal {
+        position: static !important;
+        inset: auto !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        display: block !important;
+        overflow: visible !important;
+        backdrop-filter: none !important;
+      }
+      #swimmer-report-modal .modal-card {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border: none !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+      }
+      #swimmer-report-modal .modal-body {
+        padding: 0 !important;
+      }
+      .print-report-container {
+        color: #0f172a !important;
+      }
+      .report-kpi-box {
+        background: #f8fafc !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #0f172a !important;
+      }
+      .report-kpi-val {
+        color: #0f172a !important;
+      }
+      .report-kpi-lbl {
+        color: #64748b !important;
+      }
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        color: #0f172a !important;
+      }
+      th {
+        background: #f1f5f9 !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+        font-weight: 800 !important;
+      }
+      td {
+        border: 1px solid #cbd5e1 !important;
+        color: #0f172a !important;
+      }
+      .table-container {
+        border: 1px solid #cbd5e1 !important;
+        background: #ffffff !important;
+        overflow: visible !important;
+      }
+      .drop-good {
+        color: #059669 !important;
+      }
+      .drop-warn {
+        color: #d97706 !important;
+      }
+      .drop-neutral {
+        color: #64748b !important;
+      }
+      .event-pill-qual {
+        background: #dcfce7 !important;
+        color: #166534 !important;
+        border: 1px solid #86efac !important;
+      }
+      .event-pill-slower {
+        background: #fef3c7 !important;
+        color: #92400e !important;
+        border: 1px solid #fde68a !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -392,6 +555,7 @@
       <ul class="nav-list">
         <li id="tab-overview" class="nav-item active" onclick="switchView('overview')">🏠 Overview</li>
         <li id="tab-swimmers" class="nav-item" onclick="switchView('swimmers')">🏊‍♀️ Swimmer PBs</li>
+        <li id="tab-countytimes" class="nav-item" onclick="switchView('countytimes')">🏆 Somerset County Times</li>
         <li id="tab-qualifiers" class="nav-item" onclick="switchView('qualifiers')">🏅 County & Regional</li>
         <li id="tab-movements" class="nav-item" onclick="switchView('movements')">📊 Squad Movements</li>
         <li id="tab-calendar" class="nav-item" onclick="switchView('calendar')">📅 Meet Calendar</li>
@@ -439,6 +603,15 @@
             <div class="card-desc">View official swim times, 12-month rolling form, Swim England history graphs, and Somerset County QT badges.</div>
           </div>
           <span class="card-badge" id="overview-swimmers-badge">1,000+ Raw Times</span>
+        </div>
+
+        <div class="card-btn countytimes" style="border-top: 4px solid var(--accent-emerald);" onclick="switchView('countytimes')">
+          <div>
+            <div class="card-icon">🏆</div>
+            <div class="card-title">Somerset County Times</div>
+            <div class="card-desc">Live Somerset County Championship qualification tracker, entry matrix, and benchmark standards synced from Google Sheets.</div>
+          </div>
+          <span class="card-badge" id="overview-countytimes-badge" style="background: rgba(16,185,129,0.15); color: var(--accent-emerald); border-color: var(--accent-emerald);">Live Sheet Synced</span>
         </div>
 
         <div class="card-btn movements" style="border-top: 4px solid var(--accent-blue);" onclick="switchView('movements')">
@@ -498,6 +671,9 @@
           <option value="6M">📅 Past 6 Months</option>
           <option value="2026">📅 2026 Season</option>
         </select>
+        <button id="swimmers-download-report-btn" onclick="openCurrentSwimmerReport()" style="background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); color: #04131f; border: none; padding: 0.6rem 1.15rem; border-radius: 8px; font-size: 0.875rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(6,182,212,0.3); margin-left: auto;" title="Download comprehensive times & progress report for selected swimmer">
+          <span>📥 Download Swimmer Report</span>
+        </button>
       </div>
 
       <div id="swimmer-summary-banner" style="margin-bottom: 1rem;"></div>
@@ -521,6 +697,173 @@
             </tr>
           </thead>
           <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VIEW: Somerset County Times Module (Live Google Sheet Integration) -->
+    <div id="view-countytimes" class="view-content">
+      <!-- Sync Status & Toolbar Bar -->
+      <div class="controls-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.25rem;">
+        <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+          <span id="county-sync-status-badge" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.35rem 0.75rem; border-radius:8px; font-size:0.8rem; font-weight:700; background:rgba(16,185,129,0.15); color:var(--accent-emerald); border:1px solid var(--accent-emerald);">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--accent-emerald); display:inline-block;"></span>
+            <span id="county-sync-status-text">Live Google Sheet Synced</span>
+          </span>
+          <span id="county-sync-last-time" style="font-size:0.75rem; color:var(--text-muted);"></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+          <button onclick="loadLiveCountyTimes(true)" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-color); color:var(--text-main); padding:0.5rem 0.85rem; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem;" title="Re-fetch latest data from Google Sheet">
+            🔄 Sync Now
+          </button>
+          <button onclick="openCountySheetModal()" style="background:rgba(6,182,212,0.12); border:1px solid var(--accent-cyan); color:var(--accent-cyan); padding:0.5rem 0.85rem; border-radius:8px; font-size:0.8rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem;" title="Configure Google Sheet link">
+            ⚙️ Connect Google Sheet
+          </button>
+          <button onclick="downloadCountyTimesCSV()" style="background:rgba(16,185,129,0.15); border:1px solid var(--accent-emerald); color:var(--accent-emerald); padding:0.5rem 0.85rem; border-radius:8px; font-size:0.8rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem;" title="Download County Times Table as CSV">
+            📊 Download CSV
+          </button>
+          <button onclick="copyCountyTimesTable()" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-color); color:var(--text-muted); padding:0.5rem 0.85rem; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer;" title="Copy Table for Excel/Google Sheets">
+            📋 Copy Table
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="kpi-card" style="border-top: 4px solid var(--accent-purple);">
+          <div class="kpi-card-header">
+            <span class="kpi-icon">👥</span>
+            <span class="kpi-badge" style="background: rgba(139,92,246,0.15); color: var(--accent-purple); border: 1px solid var(--accent-purple);">Roster</span>
+          </div>
+          <div class="kpi-value" id="kpi-count-county-swimmers" style="color: var(--accent-purple);">0</div>
+          <div class="kpi-title">Total Swimmers Tracked</div>
+          <div class="kpi-sub" id="kpi-sub-county-swimmers">In Somerset County Matrix</div>
+        </div>
+
+        <div class="kpi-card" style="border-top: 4px solid var(--accent-emerald);">
+          <div class="kpi-card-header">
+            <span class="kpi-icon">🏆</span>
+            <span class="kpi-badge" style="background: rgba(16,185,129,0.15); color: var(--accent-emerald); border: 1px solid var(--accent-emerald);">Qualified</span>
+          </div>
+          <div class="kpi-value" id="kpi-count-county-qualified-swimmers" style="color: var(--accent-emerald);">0</div>
+          <div class="kpi-title">County Qualifiers</div>
+          <div class="kpi-sub" id="kpi-sub-county-qualified-swimmers">Swimmers with ≥1 QT</div>
+        </div>
+
+        <div class="kpi-card" style="border-top: 4px solid var(--accent-cyan);">
+          <div class="kpi-card-header">
+            <span class="kpi-icon">🏊</span>
+            <span class="kpi-badge" style="background: rgba(6,182,212,0.15); color: var(--accent-cyan); border: 1px solid var(--accent-cyan);">Entries</span>
+          </div>
+          <div class="kpi-value" id="kpi-count-county-qualified-swims" style="color: var(--accent-cyan);">0</div>
+          <div class="kpi-title">Total Qualified Swims</div>
+          <div class="kpi-sub" id="kpi-sub-county-qualified-swims">Individual race qualifications</div>
+        </div>
+
+        <div class="kpi-card" style="border-top: 4px solid var(--accent-amber);">
+          <div class="kpi-card-header">
+            <span class="kpi-icon">📈</span>
+            <span class="kpi-badge" style="background: rgba(245,158,11,0.15); color: var(--accent-amber); border: 1px solid var(--accent-amber);">Chasing</span>
+          </div>
+          <div class="kpi-value" id="kpi-count-county-slower-swims" style="color: var(--accent-amber);">0</div>
+          <div class="kpi-title">Consideration / Slower Swims</div>
+          <div class="kpi-sub" id="kpi-sub-county-slower-swims">Developing toward qualification</div>
+        </div>
+      </div>
+
+      <!-- VIEW TOGGLE & CONTROLS -->
+      <div class="controls-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+          <button id="county-mode-btn-swimmers" onclick="setCountyTimesViewMode('swimmers')" style="padding:0.55rem 1rem; border-radius:8px; font-weight:700; font-size:0.85rem; cursor:pointer; background:var(--accent-cyan); color:#04131f; border:none; transition:all 0.2s ease;">
+            👤 Swimmer Qualification Matrix
+          </button>
+          <button id="county-mode-btn-standards" onclick="setCountyTimesViewMode('standards')" style="padding:0.55rem 1rem; border-radius:8px; font-weight:700; font-size:0.85rem; cursor:pointer; background:rgba(255,255,255,0.06); color:var(--text-muted); border:1px solid var(--border-color); transition:all 0.2s ease;">
+            ⏱️ Official Qualifying Standards (Cutoffs)
+          </button>
+        </div>
+        <div id="county-swimmer-filters" style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; flex:1; justify-content:flex-end;">
+          <input type="text" id="county-search-input" class="search-input" style="min-width:200px;" placeholder="🔍 Search swimmer or event..." oninput="filterCountyTimes()">
+          <select id="county-squad-select" class="select-input" onchange="filterCountyTimes()">
+            <option value="ALL">All Squads</option>
+          </select>
+          <select id="county-status-select" class="select-input" onchange="filterCountyTimes()">
+            <option value="ALL">All Qualification Statuses</option>
+            <option value="QUALIFIED">🏆 Qualified Swimmers (≥1 QT)</option>
+            <option value="DEVELOPING">🌱 In Development (0 QTs)</option>
+          </select>
+          <select id="county-gender-select" class="select-input" onchange="filterCountyTimes()">
+            <option value="ALL">All Genders</option>
+            <option value="Girls">Girls / Female</option>
+            <option value="Boys">Boys / Male / Open</option>
+          </select>
+          <select id="county-age-select" class="select-input" onchange="filterCountyTimes()">
+            <option value="ALL">All Ages</option>
+            <option value="10">Age 10</option>
+            <option value="11">Age 11</option>
+            <option value="12">Age 12</option>
+            <option value="13">Age 13</option>
+            <option value="14">Age 14</option>
+            <option value="15">Age 15</option>
+            <option value="16">Age 16</option>
+            <option value="17">Age 17</option>
+            <option value="18">Age 18+</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- RESULTS COUNT -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; padding: 0 0.25rem;">
+        <div id="county-result-count" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+          Loading Somerset County times...
+        </div>
+      </div>
+
+      <!-- TABLE CONTAINER 1: Swimmer Matrix View -->
+      <div class="table-container" id="county-swimmers-table-container">
+        <table id="county-times-table">
+          <thead>
+            <tr>
+              <th>Swimmer Name</th>
+              <th>ASA / SE #</th>
+              <th>Squad</th>
+              <th>Gender / Age</th>
+              <th>Times Tracked</th>
+              <th>Qualified Events</th>
+              <th>Slower Events</th>
+              <th>Qualified Swims</th>
+              <th>Consideration Swims</th>
+            </tr>
+          </thead>
+          <tbody id="county-times-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- TABLE CONTAINER 2: Standards Matrix View (Hidden by default) -->
+      <div class="table-container" id="county-standards-table-container" style="display:none;">
+        <div style="padding:1rem; background:rgba(255,255,255,0.02); border-bottom:1px solid var(--border-color); display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+          <span style="font-size:0.875rem; font-weight:700; color:var(--text-main);">Category:</span>
+          <select id="standards-cat-select" class="select-input" onchange="renderCountyStandardsTable()" style="padding:0.4rem 0.8rem;">
+            <option value="Female">Female</option>
+            <option value="Male/Open">Male / Open</option>
+          </select>
+          <span style="font-size:0.8rem; color:var(--text-muted);">Official 2026/27 Somerset County Championship Qualifying Standards (25m Short Course & 50m Long Course)</span>
+        </div>
+        <table id="county-standards-table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Age 10</th>
+              <th>Age 11</th>
+              <th>Age 12</th>
+              <th>Age 13</th>
+              <th>Age 14</th>
+              <th>Age 15</th>
+              <th>Age 16</th>
+              <th>Age 17</th>
+              <th>Age 18+</th>
+            </tr>
+          </thead>
+          <tbody id="county-standards-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -692,7 +1035,12 @@
           <h3 id="swimmer-modal-name">Swimmer Personal Bests</h3>
           <p id="swimmer-modal-sub" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;"></p>
         </div>
-        <button class="modal-close" onclick="closeSwimmerModal()">&times;</button>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <button onclick="openCurrentSwimmerReport()" style="background:linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); color:#04131f; border:none; padding:0.4rem 0.85rem; border-radius:6px; font-weight:800; font-size:0.8rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.35rem;" title="Download Printable Performance Report">
+            📥 Download Report
+          </button>
+          <button class="modal-close" onclick="closeSwimmerModal()">&times;</button>
+        </div>
       </div>
       <div id="swimmer-modal-body" class="modal-body"></div>
     </div>
@@ -723,6 +1071,69 @@
         <button class="modal-close" onclick="closeQualifierSwimmerModal()">&times;</button>
       </div>
       <div id="qualifier-modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- SWIMMER TIMES & IMPROVEMENT DOWNLOAD REPORT MODAL -->
+  <div id="swimmer-report-modal" class="modal-backdrop hidden" onclick="if(event.target === this) closeSwimmerReportModal()">
+    <div class="modal-card" style="max-width: 980px; width: 95vw; max-height: 92vh; overflow-y: auto;">
+      <div class="modal-header no-print" style="position: sticky; top: 0; background: var(--bg-card); z-index: 10; border-bottom: 1px solid var(--border-color); padding: 1rem 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="font-size: 1.8rem;">📥</div>
+          <div>
+            <h3 id="report-modal-title" style="font-size: 1.2rem; font-weight: 800; color: var(--text-main); margin: 0;">Swimmer Performance & Progression Report</h3>
+            <p id="report-modal-sub" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;"></p>
+          </div>
+        </div>
+        <div class="modal-actions" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <button onclick="printSwimmerReport()" style="background: var(--accent-cyan); color: #04131f; border: none; padding: 0.5rem 0.9rem; border-radius: 8px; font-weight: 800; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 4px 10px rgba(6,182,212,0.3);" title="Print or save as clean PDF">
+            🖨️ Print / Save as PDF
+          </button>
+          <button onclick="downloadSwimmerReportCSV()" style="background: rgba(16,185,129,0.18); border: 1px solid var(--accent-emerald); color: var(--accent-emerald); padding: 0.5rem 0.85rem; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;" title="Download spreadsheet of all times and improvement">
+            📊 Download CSV
+          </button>
+          <button onclick="copySwimmerReportTable()" style="background: rgba(255,255,255,0.08); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.5rem 0.75rem; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer;" title="Copy tab-separated table for Excel/Google Sheets">
+            📋 Copy Table
+          </button>
+          <button class="modal-close" onclick="closeSwimmerReportModal()">&times;</button>
+        </div>
+      </div>
+      <div id="swimmer-report-modal-body" class="modal-body" style="padding: 1.5rem;">
+        <!-- Dynamically rendered printable report -->
+      </div>
+    </div>
+  </div>
+
+  <!-- SOMERSET COUNTY GOOGLE SHEET CONFIG MODAL -->
+  <div id="county-sheet-modal" class="modal-backdrop hidden" onclick="if(event.target === this) closeCountySheetModal()">
+    <div class="modal-card" style="max-width: 620px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">⚙️ Connect Somerset County Times Google Sheet</h3>
+          <p style="font-size: 0.825rem; color: var(--text-muted); margin-top: 0.2rem;">Sync live Somerset County times directly from any Google Sheet</p>
+        </div>
+        <button class="modal-close" onclick="closeCountySheetModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem;">
+          Enter the Google Sheet URL for your Somerset County times. You can paste any standard Google Sheet share link or published CSV link.
+        </p>
+        <div style="margin-bottom: 1rem;">
+          <label style="display:block; font-size:0.8rem; font-weight:700; color:var(--text-main); margin-bottom:0.4rem;">Google Sheet URL or Published Link:</label>
+          <input type="text" id="county-sheet-input-url" class="search-input" style="width:100%; font-family:monospace; font-size:0.825rem;" placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=...">
+        </div>
+        <div style="background:rgba(6,182,212,0.08); border:1px solid rgba(6,182,212,0.25); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.25rem; font-size:0.8rem; color:var(--text-muted); line-height:1.4;">
+          💡 <strong>Tip:</strong> Ensure your Google Sheet sharing setting is set to <em>"Anyone with the link can view"</em>. The dashboard automatically converts view links into live CSV streams.
+        </div>
+        <div id="county-sheet-test-result" style="margin-bottom:1rem; font-size:0.825rem; display:none;"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem;">
+          <button onclick="resetCountySheetUrl()" style="background:transparent; border:none; color:var(--text-muted); text-decoration:underline; font-size:0.8rem; cursor:pointer;">Reset to Default</button>
+          <div style="display:flex; gap:0.5rem;">
+            <button onclick="closeCountySheetModal()" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-color); color:var(--text-muted); padding:0.5rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer;">Cancel</button>
+            <button onclick="saveCountySheetUrl()" style="background:var(--accent-emerald); color:#ffffff; border:none; padding:0.5rem 1.2rem; border-radius:8px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">Save & Sync Now</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

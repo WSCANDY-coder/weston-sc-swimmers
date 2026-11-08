@@ -11,17 +11,29 @@ This repository is the public-facing, read-only web portal for Weston SC swimmer
    * Direct links to official **Swim England Progression Graphs** (`tstroke` & `tcourse`).
    * Somerset County Qualification Time (`🏆 County QT`) badges.
    * **Rolling 12-Month Form Filter**: View times from the past 12 months, 6 months, or 2026 season.
+   * **📥 Download Swimmer Times & Improvement Report**:
+     - Printable / PDF Performance Report with official club crest, swimmer profile, and summary KPIs.
+     - Lifetime Personal Bests & time improvement table (Baseline Time vs PB Time, seconds dropped, and % improvement).
+     - Chronological race-by-race split log tracking drops between competitions.
+     - 1-Click CSV spreadsheet export and clipboard copy for Google Sheets / Excel.
 
-2. **Squad Movements & Schedules (`#view-movements`)**:
+2. **Somerset County Times Tracker (`#view-countytimes`)**:
+   * Dedicated Somerset County Championship qualification tracker.
+   * **Live Dynamic Google Sheet Sync**: Fetches live swimmer entries and qualifications directly from Google Sheets with automatic URL normalizer and offline local dataset fallback.
+   * Interactive **Swimmer Qualification Matrix** displaying qualified events, slower events, and squad filters.
+   * **Official County Standards Table** displaying 2026/27 qualifying cutoff times across all events and age groups (Ages 10 to 18+ for Female and Male/Open).
+   * 1-Click CSV export and Google Sheets clipboard copy.
+
+3. **Squad Movements & Schedules (`#view-movements`)**:
    * Current squad allocations (Club Link to Regional Performance).
    * Weekly pool training session times (`⏰ Tues/Thurs 7:40-9.00`).
    * Weekend extra session badges (`🗓️ Sat 7-8am`).
 
-3. **Meet Calendar (`#view-calendar`)**:
+4. **Meet Calendar (`#view-calendar`)**:
    * Scheduled galas, target open meets, entry deadlines, and pool venues.
    * **Live Dynamic Sync**: Automatically loads real-time meet dates and venues from Google Sheets (`gid=436293374`) with local dataset fallback.
 
-4. **Club Notices & Urgent News (`#view-overview`)**:
+5. **Club Notices & Urgent News (`#view-overview`)**:
    * Top alert banner for high-priority news (gala entry closing dates).
    * Interactive Club Notices modal for detailed announcements.
 

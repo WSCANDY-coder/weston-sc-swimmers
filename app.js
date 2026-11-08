@@ -75,6 +75,7 @@ function switchView(viewId) {
     const titles = {
         'overview': ['Swimmers & Parents Hub', 'Track personal bests, Swim England event progression, squad allocations, and target meets.'],
         'swimmers': ['Swimmer PBs & Progression', 'Detailed performance history, personal bests, rolling 12-month form, and Swim England graphs.'],
+        'countytimes': ['Somerset County Times', 'Somerset County Championship qualification tracker, swimmer entry status, and standards synced with Google Sheets.'],
         'qualifiers': ['County & Regional Qualifiers', 'Live qualification tracker against 2026/27 Somerset County and South West Regional benchmark standards (Competition Age as of 31/12/2027).'],
         'movements': ['Squad Movements & Training Schedules', 'Review current squad allocations, weekly pool training schedules, and weekend extra sessions.'],
         'calendar': ['Meet Calendar', 'Scheduled galas, target open meets, entry deadlines, and pool venues.']
@@ -87,7 +88,9 @@ function switchView(viewId) {
         if (descElem) descElem.innerText = titles[viewId][1];
     }
 
-    if (viewId === 'qualifiers') {
+    if (viewId === 'countytimes') {
+        renderCountyTimesDashboard();
+    } else if (viewId === 'qualifiers') {
         renderQualifiersDashboard();
     } else if (viewId === 'calendar') {
         renderCalendar();
@@ -191,23 +194,42 @@ function buildSwimEnglandHistoryUrl(seNumber, eventName, course = 'S') {
 }
 
 // 4. ACTIVE SQUAD ROSTER EXTRACTION
+const DEFAULT_SQUAD_SWIMMER_NAMES = [
+  'Alexie Tembey-Barnard', 'Alfie Coles', 'Alice Brueford', 'Amelia Wolanin', 'Annabel Livesey',
+  'Arabella Collard', 'Austin Hodder', 'Ava Mitchard', 'Bella Davis', 'Bethany Thomas',
+  'Billy Marshall', 'Callie Tucker', 'Cara Blackshaw', 'Cara Hobden', 'Chase Norman',
+  'Edna Jacobs', 'Edward Moon', 'Elana Brayton', 'Eleonora Sorroche Baseotto', 'Emil Faradzov',
+  'Emily Butcher', 'Erin Jones', 'Esme Ross', 'Eva Allen', 'Evie Wilkins',
+  'Felicity Thomas', 'Freddie Marshall', 'Freya Hoare-Matthews', 'George Jeffries', 'Holly Butterfield',
+  'Imogen Segal', 'Jasmine Lesego', 'Jennifer Le', 'Jessica Waller', 'Jonah Sowerbutts',
+  'Kinga Dudzinska', 'Klaudia Dudzinska', 'Leo Holmes', 'Lily Lester', 'Lola Tembey Barnard',
+  'Louis Thomas', 'Luca Watson', 'Max Shepherd', 'Maxi Vincent', 'Mia Rockman',
+  'Oliver Ochoska', 'Oliver Waller', 'Olivia Cheung', 'Oscar Crow', 'Oskar Rabura',
+  'Patrick Tobiasz', 'Quinn Margetts', 'Reuben Le', 'Rosie Livesey', 'Scarlett Bracewell Birks',
+  'Seth Gould', 'Siena Blackshaw', 'Sophia Davis', 'Victor Tsang', 'Zac Oates'
+];
+
 function getActiveSquadSwimmerNames() {
-    if (!SQUAD_LIST_DATA || !SQUAD_LIST_DATA.length) return [];
-    const names = new Set();
-    const cols = Object.keys(SQUAD_LIST_DATA[0]);
-    cols.forEach(col => {
-        SQUAD_LIST_DATA.forEach(r => {
-            const val = (r[col] || '').trim();
-            if (!val) return;
-            if (val.toLowerCase().includes('max number')) return;
-            const hasNumbers = /\d/.test(val);
-            const hasKeyword = /\b(sat|saturday|sun|sunday|mon|tue|wed|thu|fri|am|pm|session)\b/i.test(val);
-            if (!hasNumbers || !hasKeyword) {
-                names.add(val);
-            }
+    if (SQUAD_LIST_DATA && SQUAD_LIST_DATA.length) {
+        const names = new Set();
+        const cols = Object.keys(SQUAD_LIST_DATA[0]);
+        cols.forEach(col => {
+            SQUAD_LIST_DATA.forEach(r => {
+                const val = (r[col] || '').trim();
+                if (!val) return;
+                if (val.toLowerCase().includes('max number') || val.toLowerCase().includes('squad') || val.toLowerCase().includes('weston')) return;
+                const hasNumbers = /\d/.test(val);
+                const hasKeyword = /\b(sat|saturday|sun|sunday|mon|tue|wed|thu|fri|am|pm|session)\b/i.test(val);
+                if (!hasNumbers || !hasKeyword) {
+                    names.add(val);
+                }
+            });
         });
-    });
-    return Array.from(names).sort();
+        if (names.size > 0) {
+            return Array.from(names).sort();
+        }
+    }
+    return DEFAULT_SQUAD_SWIMMER_NAMES.slice().sort();
 }
 
 // 5. QUALIFICATION LOOKUPS (COUNTY, BSG L2, DEVLOP '26)
@@ -474,14 +496,36 @@ function renderSwimmersDashboard(data) {
             let bannerHTML = '';
             if (APP_SETTINGS.showCounty && cInfo && cInfo.qualifiedCount > 0) {
                 bannerHTML += `
-                    <div style="background: rgba(16,185,129,0.1); border: 1px solid var(--accent-emerald); border-radius: 10px; padding: 0.75rem 1.15rem; margin-bottom: 0.5rem; display:flex; align-items:center; gap:0.75rem;">
-                        <span style="font-size:1.4rem;">🏆</span>
-                        <div>
-                            <div style="font-weight:700; color:var(--accent-emerald); font-size:0.9rem;">Somerset County Championship Qualifier</div>
-                            <div style="font-size:0.8rem; color:var(--text-main); margin-top:0.1rem;">
-                                Qualified for <strong>${cInfo.qualifiedCount} events</strong>: ${cInfo.qualifiedEvents.join(', ')}
+                    <div style="background: rgba(16,185,129,0.1); border: 1px solid var(--accent-emerald); border-radius: 10px; padding: 0.75rem 1.15rem; margin-bottom: 0.5rem; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span style="font-size:1.4rem;">🏆</span>
+                            <div>
+                                <div style="font-weight:700; color:var(--accent-emerald); font-size:0.9rem;">Somerset County Championship Qualifier</div>
+                                <div style="font-size:0.8rem; color:var(--text-main); margin-top:0.1rem;">
+                                    Qualified for <strong>${cInfo.qualifiedCount} events</strong>: ${cInfo.qualifiedEvents.join(', ')}
+                                </div>
                             </div>
                         </div>
+                        <button onclick="goToCountyTimesForSwimmer('${selectedSwimmer.replace(/'/g, "\\'")}')" style="background:rgba(16,185,129,0.2); border:1px solid var(--accent-emerald); color:var(--accent-emerald); padding:0.35rem 0.75rem; border-radius:6px; font-weight:700; font-size:0.75rem; cursor:pointer; margin-left:auto; white-space:nowrap;" title="View Somerset County Times Matrix">
+                            🏆 View Somerset County Times →
+                        </button>
+                    </div>
+                `;
+            } else if (APP_SETTINGS.showCounty) {
+                bannerHTML += `
+                    <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.3); border-radius: 10px; padding: 0.65rem 1.15rem; margin-bottom: 0.5rem; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span style="font-size:1.2rem;">🎯</span>
+                            <div>
+                                <div style="font-weight:700; color:var(--accent-purple); font-size:0.85rem;">Somerset County Championship Times</div>
+                                <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.1rem;">
+                                    Tracking qualifying times against 2026/27 Somerset County Championship standards.
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="goToCountyTimesForSwimmer('${selectedSwimmer.replace(/'/g, "\\'")}')" style="background:rgba(139,92,246,0.15); border:1px solid var(--accent-purple); color:var(--accent-purple); padding:0.35rem 0.75rem; border-radius:6px; font-weight:700; font-size:0.75rem; cursor:pointer; margin-left:auto; white-space:nowrap;" title="View Somerset County Times Matrix">
+                            🏆 View Somerset County Times →
+                        </button>
                     </div>
                 `;
             }
@@ -685,14 +729,36 @@ function openSwimmerModal(seNum, name) {
     let summaryBannersHTML = '';
     if (APP_SETTINGS.showCounty && cInfo && cInfo.qualifiedCount > 0) {
         summaryBannersHTML += `
-            <div style="background: rgba(16,185,129,0.12); border: 1px solid var(--accent-emerald); border-radius: 10px; padding: 0.75rem 1.15rem; margin-bottom: 0.6rem; display:flex; align-items:center; gap:0.75rem;">
-                <span style="font-size:1.4rem;">🏆</span>
-                <div>
-                    <div style="font-weight:700; color:var(--accent-emerald); font-size:0.9rem;">Somerset County Championship Qualifier</div>
-                    <div style="font-size:0.8rem; color:var(--text-main); margin-top:0.1rem;">
-                        Qualified for <strong>${cInfo.qualifiedCount} events</strong>: ${cInfo.qualifiedEvents.join(', ')}
+            <div style="background: rgba(16,185,129,0.12); border: 1px solid var(--accent-emerald); border-radius: 10px; padding: 0.75rem 1.15rem; margin-bottom: 0.6rem; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <span style="font-size:1.4rem;">🏆</span>
+                    <div>
+                        <div style="font-weight:700; color:var(--accent-emerald); font-size:0.9rem;">Somerset County Championship Qualifier</div>
+                        <div style="font-size:0.8rem; color:var(--text-main); margin-top:0.1rem;">
+                            Qualified for <strong>${cInfo.qualifiedCount} events</strong>: ${cInfo.qualifiedEvents.join(', ')}
+                        </div>
                     </div>
                 </div>
+                <button onclick="goToCountyTimesForSwimmer('${swimmerName.replace(/'/g, "\\'")}')" style="background:rgba(16,185,129,0.2); border:1px solid var(--accent-emerald); color:var(--accent-emerald); padding:0.35rem 0.75rem; border-radius:6px; font-weight:700; font-size:0.75rem; cursor:pointer; margin-left:auto; white-space:nowrap;" title="View Somerset County Times Matrix">
+                    🏆 View County Times →
+                </button>
+            </div>
+        `;
+    } else if (APP_SETTINGS.showCounty) {
+        summaryBannersHTML += `
+            <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.3); border-radius: 10px; padding: 0.65rem 1.15rem; margin-bottom: 0.6rem; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <span style="font-size:1.2rem;">🎯</span>
+                    <div>
+                        <div style="font-weight:700; color:var(--accent-purple); font-size:0.85rem;">Somerset County Championship Times</div>
+                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.1rem;">
+                            Tracking qualifying times against 2026/27 Somerset County standards.
+                        </div>
+                    </div>
+                </div>
+                <button onclick="goToCountyTimesForSwimmer('${swimmerName.replace(/'/g, "\\'")}')" style="background:rgba(139,92,246,0.15); border:1px solid var(--accent-purple); color:var(--accent-purple); padding:0.35rem 0.75rem; border-radius:6px; font-weight:700; font-size:0.75rem; cursor:pointer; margin-left:auto; white-space:nowrap;" title="View Somerset County Times Matrix">
+                    🏆 View County Times →
+                </button>
             </div>
         `;
     }
@@ -1844,6 +1910,7 @@ function initDashboard() {
 
         loadLiveSquadMovements();
         loadLiveMeetCalendar();
+        loadLiveCountyTimes();
 
         applyAppSettings();
 
@@ -1852,6 +1919,7 @@ function initDashboard() {
             filterSwimmers();
         }
         if (document.getElementById('qualifiers-table')) renderQualifiersDashboard();
+        if (document.getElementById('county-times-tbody')) renderCountyTimesDashboard();
         if (document.getElementById('squad-grid')) renderSquadList();
         if (document.getElementById('calendar-table-body')) renderCalendar();
 
@@ -1860,7 +1928,7 @@ function initDashboard() {
     }
 }
 
-const GOOGLE_SHEET_SQUAD_CSV_URL = 'https://docs.google.com/spreadsheets/d/1_gCeBY0aJU-N4oWEr2wtc-DC6qttwB_W9vcMMDYaL8g/export?format=csv&gid=381588361';
+const GOOGLE_SHEET_SQUAD_CSV_URL = 'https://docs.google.com/spreadsheets/d/1J29UMv1JGfz0cemI3sMgCOierIhe8wM0Kik3p5j9ork/export?format=csv&gid=381588361';
 
 function parseCSVRows(csvText) {
     const rows = [];
@@ -1949,6 +2017,7 @@ async function loadLiveSquadMovements() {
                     filterSwimmers();
                 }
                 if (document.getElementById('qualifiers-table')) renderQualifiersDashboard();
+                if (document.getElementById('county-times-tbody')) renderCountyTimesDashboard();
             }
         }
     } catch (e) {
@@ -1983,28 +2052,1129 @@ async function loadLiveMeetCalendar() {
     }
 }
 
-// Global Exports
-window.switchView = switchView;
-window.filterSwimmers = filterSwimmers;
-window.filterCalendar = filterCalendar;
-window.loadLiveMeetCalendar = loadLiveMeetCalendar;
-window.filterQualifiers = filterQualifiers;
-window.resetQualifiersFilters = resetQualifiersFilters;
-window.setQualifiersTierFilter = setQualifiersTierFilter;
-window.openQualifierSwimmerModal = openQualifierSwimmerModal;
-window.closeQualifierSwimmerModal = closeQualifierSwimmerModal;
-window.renderQualifiersDashboard = renderQualifiersDashboard;
-window.EVENT_STROKE_MAP = EVENT_STROKE_MAP;
-window.buildSwimEnglandHistoryUrl = buildSwimEnglandHistoryUrl;
-window.openSwimmerModal = openSwimmerModal;
-window.closeSwimmerModal = closeSwimmerModal;
-window.openNoticesModal = openNoticesModal;
-window.closeNoticesModal = closeNoticesModal;
-window.dismissTopBanner = dismissTopBanner;
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initDashboard);
-} else {
-    initDashboard();
+// =========================================================================
+// 10. TOAST NOTIFICATION UTILITY
+// =========================================================================
+function showToast(message, type = 'success') {
+    let toast = document.getElementById('hub-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'hub-toast';
+        toast.style.cssText = 'position:fixed; bottom:24px; right:24px; z-index:99999; padding:12px 20px; border-radius:10px; font-weight:700; font-size:0.875rem; box-shadow:0 10px 25px rgba(0,0,0,0.5); transition:all 0.3s ease; transform:translateY(100px); opacity:0; pointer-events:none; display:flex; align-items:center; gap:8px;';
+        document.body.appendChild(toast);
+    }
+    const bg = type === 'success' ? '#059669' : (type === 'error' ? '#e11d48' : '#0284c7');
+    toast.style.background = bg;
+    toast.style.color = '#ffffff';
+    toast.innerHTML = (type === 'success' ? '✅ ' : (type === 'error' ? '⚠️ ' : 'ℹ️ ')) + message;
+    toast.style.transform = 'translateY(0)';
+    toast.style.opacity = '1';
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(() => {
+        toast.style.transform = 'translateY(100px)';
+        toast.style.opacity = '0';
+    }, 3200);
 }
-window.addEventListener('load', initDashboard);
+
+function getSwimmerSquadName(swimmerName) {
+    if (!SQUAD_LIST_DATA || !SQUAD_LIST_DATA.length || !swimmerName) return 'Weston SC';
+    const targetNorm = swimmerName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cols = Object.keys(SQUAD_LIST_DATA[0]);
+    for (const col of cols) {
+        if (col.toLowerCase().includes('session') || col.toLowerCase().includes('max') || col.toLowerCase().includes('time')) continue;
+        for (const row of SQUAD_LIST_DATA) {
+            const val = (row[col] || '').trim();
+            if (val && val.toLowerCase().replace(/[^a-z0-9]/g, '') === targetNorm) {
+                return col.trim();
+            }
+        }
+    }
+    return 'Weston SC';
+}
+
+// =========================================================================
+// 11. SWIMMER TIMES & IMPROVEMENT DOWNLOAD REPORT
+// =========================================================================
+let CURRENT_REPORT_SWIMMER_NAME = '';
+
+function openCurrentSwimmerReport(passedName) {
+    let swimmerName = passedName;
+    if (!swimmerName) {
+        swimmerName = document.getElementById('swimmers-name-select')?.value;
+    }
+    if (!swimmerName || swimmerName === 'NONE') {
+        showToast('Please select a swimmer from the dropdown above to view and download their report.', 'error');
+        return;
+    }
+    openSwimmerReportModal(swimmerName);
+}
+
+function openSwimmerReportModal(swimmerName) {
+    if (!swimmerName || swimmerName === 'NONE') return;
+    CURRENT_REPORT_SWIMMER_NAME = swimmerName;
+
+    const modal = document.getElementById('swimmer-report-modal');
+    const bodyElem = document.getElementById('swimmer-report-modal-body');
+    const titleElem = document.getElementById('report-modal-title');
+    const subElem = document.getElementById('report-modal-sub');
+    if (!modal || !bodyElem) return;
+
+    const targetNorm = swimmerName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const swims = (RAW_SWIMMERS_DATA || []).filter(r => (r.swimmerName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '') === targetNorm);
+
+    if (!swims.length) {
+        showToast(`No recorded swim times found for ${swimmerName}.`, 'error');
+        return;
+    }
+
+    const resolvedName = swims[0].swimmerName || swimmerName;
+    const seNumber = swims[0].seNumber || '-';
+    const squadName = getSwimmerSquadName(resolvedName);
+    const countyInfo = getCountyInfoForSwimmer(resolvedName, seNumber);
+
+    // Group swims by Event + Course
+    const eventsMap = {};
+    swims.forEach(s => {
+        const cCourse = getCourse(s);
+        const key = `${s.event || 'Unknown'}_${cCourse}`;
+        if (!eventsMap[key]) eventsMap[key] = [];
+        eventsMap[key].push({ ...s, calculatedCourse: cCourse });
+    });
+
+    let totalLifetimeDropSec = 0;
+    let pbCount = 0;
+    const pbSummary = [];
+    const allSwimsChronological = [];
+
+    Object.keys(eventsMap).forEach(key => {
+        // Sort swims chronologically ascending
+        const list = eventsMap[key].sort((a, b) => new Date(a.date || '1970-01-01') - new Date(b.date || '1970-01-01'));
+        const first = list[0];
+        const best = [...list].sort((a, b) => (Number(a.timeSec) || 999999) - (Number(b.timeSec) || 999999))[0];
+
+        const firstSec = Number(first.timeSec) || 0;
+        const bestSec = Number(best.timeSec) || 0;
+        const dropSec = (firstSec && bestSec && firstSec > bestSec) ? (firstSec - bestSec) : 0;
+        const pctImprove = (firstSec > 0 && dropSec > 0) ? ((dropSec / firstSec) * 100) : 0;
+
+        totalLifetimeDropSec += dropSec;
+        pbCount++;
+
+        const cStatus = checkCountyStatusForRecord(resolvedName, seNumber, best.event);
+
+        pbSummary.push({
+            event: best.event,
+            course: best.calculatedCourse,
+            baselineTime: first.displayTime || '-',
+            baselineDate: first.date || '-',
+            baselineMeet: first.meetName || first.venue || '-',
+            pbTime: best.displayTime || '-',
+            convertedTime: best.convertedTime || '-',
+            pbSec: bestSec,
+            pbDate: best.date || '-',
+            meetName: best.meetName || best.venue || '-',
+            venue: best.venue || '-',
+            waPoints: best.waPoints || '-',
+            swimsCount: list.length,
+            timeDroppedSec: dropSec,
+            improvementPct: pctImprove,
+            countyStatus: cStatus,
+            history: list
+        });
+
+        // Add to chronological log with split vs previous swim in this event
+        list.forEach((swim, idx) => {
+            let deltaSec = null;
+            let deltaPct = null;
+            if (idx > 0) {
+                const prevSec = Number(list[idx - 1].timeSec) || 0;
+                const curSec = Number(swim.timeSec) || 0;
+                if (prevSec && curSec) {
+                    deltaSec = prevSec - curSec;
+                    deltaPct = (deltaSec / prevSec) * 100;
+                }
+            }
+            allSwimsChronological.push({
+                ...swim,
+                deltaSec,
+                deltaPct,
+                isPBInList: (Number(swim.timeSec) === bestSec)
+            });
+        });
+    });
+
+    // Sort PB Summary alphabetically by Event name, then Course
+    pbSummary.sort((a, b) => {
+        const evDiff = (a.event || '').localeCompare(b.event || '');
+        if (evDiff !== 0) return evDiff;
+        return (a.course || '').localeCompare(b.course || '');
+    });
+
+    // Sort race history by date descending
+    allSwimsChronological.sort((a, b) => new Date(b.date || '1970-01-01') - new Date(a.date || '1970-01-01'));
+
+    const qualifiedEventsCount = countyInfo ? (countyInfo.qualifiedCount || 0) : 0;
+    const maxWaPoints = Math.max(0, ...swims.map(s => Number(s.waPoints) || 0));
+
+    // Update modal title & subtitle
+    if (titleElem) titleElem.innerText = `🏊 ${resolvedName} - Official Times & Progress Report`;
+    if (subElem) {
+        const reportDateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        subElem.innerText = `SE #${seNumber} • Squad: ${squadName} • Generated: ${reportDateStr}`;
+    }
+
+    // Build the Report HTML
+    const reportHTML = `
+        <div class="print-report-container">
+            <!-- Printable Official Club Header -->
+            <div style="border-bottom: 2px solid var(--accent-cyan); padding-bottom: 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <div style="font-size: 1.4rem; font-weight: 900; letter-spacing: -0.02em; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                        <span>🏊 Weston-super-Mare Swimming Club</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
+                        Official Swimmer Performance, Qualification & Improvement Report
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.15rem; font-weight: 800; color: var(--accent-cyan);">${resolvedName}</div>
+                    <div style="font-size: 0.825rem; color: var(--text-muted); margin-top: 0.15rem;">
+                        Swim England #: <strong style="color:var(--text-main); font-family:monospace;">${seNumber}</strong> • Squad: <strong>${squadName}</strong>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">
+                        Report Date: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Executive Performance KPI Tiles -->
+            <div class="report-kpi-grid">
+                <div class="report-kpi-box">
+                    <div class="report-kpi-val" style="color: var(--accent-cyan);">${pbSummary.length}</div>
+                    <div class="report-kpi-lbl">Personal Bests Tracked</div>
+                </div>
+                <div class="report-kpi-box">
+                    <div class="report-kpi-val" style="color: var(--accent-emerald);">
+                        ${totalLifetimeDropSec > 0 ? `-${totalLifetimeDropSec.toFixed(2)}s` : 'Baseline'}
+                    </div>
+                    <div class="report-kpi-lbl">Cumulative Time Dropped</div>
+                </div>
+                <div class="report-kpi-box">
+                    <div class="report-kpi-val" style="color: var(--accent-purple);">
+                        ${qualifiedEventsCount > 0 ? `🏆 ${qualifiedEventsCount} Qualified` : 'Developing'}
+                    </div>
+                    <div class="report-kpi-lbl">Somerset County Status</div>
+                </div>
+                <div class="report-kpi-box">
+                    <div class="report-kpi-val" style="color: var(--accent-amber);">${maxWaPoints > 0 ? maxWaPoints : '-'} pts</div>
+                    <div class="report-kpi-lbl">Peak WA Points</div>
+                </div>
+                <div class="report-kpi-box">
+                    <div class="report-kpi-val" style="color: var(--accent-blue);">${swims.length}</div>
+                    <div class="report-kpi-lbl">Total Recorded Swims</div>
+                </div>
+            </div>
+
+            ${qualifiedEventsCount > 0 ? `
+                <div style="background: rgba(16,185,129,0.12); border: 1px solid var(--accent-emerald); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.6rem;">
+                    <span style="font-size: 1.3rem;">🏆</span>
+                    <div style="font-size: 0.85rem; color: var(--text-main);">
+                        <strong>Somerset County Championship Qualifier:</strong> Qualified in <strong>${qualifiedEventsCount} events</strong> (${(countyInfo.qualifiedEvents || []).join(', ')})
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- SECTION 1: Personal Bests & Lifetime Improvement Summary -->
+            <div style="margin-bottom: 1.75rem;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.6rem;">
+                    <h4 style="font-size: 1rem; font-weight: 800; color: var(--text-main); margin: 0;">
+                        ⭐ Personal Bests & Time Improvement Over Time
+                    </h4>
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">${pbSummary.length} Events Recorded</span>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Event</th>
+                                <th>Course</th>
+                                <th>Current PB</th>
+                                <th>Converted</th>
+                                <th>Baseline (First)</th>
+                                <th>Time Dropped</th>
+                                <th>% Improvement</th>
+                                <th>WA Pts</th>
+                                <th>PB Date</th>
+                                <th>Meet / Gala</th>
+                                <th>County Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${pbSummary.map(r => {
+                                const courseBadge = r.course === 'LC'
+                                    ? `<span style="background:rgba(6,182,212,0.15); color:var(--accent-cyan); border:1px solid var(--accent-cyan); padding:0.1rem 0.35rem; border-radius:4px; font-weight:700; font-size:0.7rem;">50m LC</span>`
+                                    : `<span style="background:rgba(217,119,6,0.15); color:var(--accent-amber); border:1px solid var(--accent-amber); padding:0.1rem 0.35rem; border-radius:4px; font-weight:700; font-size:0.7rem;">25m SC</span>`;
+
+                                let dropDisplay = '<span class="drop-neutral">-</span>';
+                                let pctDisplay = '<span class="drop-neutral">-</span>';
+
+                                if (r.swimsCount > 1) {
+                                    if (r.timeDroppedSec > 0) {
+                                        dropDisplay = `<span class="drop-good">-${r.timeDroppedSec.toFixed(2)}s 🚀</span>`;
+                                        pctDisplay = `<span class="drop-good">+${r.improvementPct.toFixed(1)}%</span>`;
+                                    } else {
+                                        dropDisplay = `<span class="drop-neutral">0.00s</span>`;
+                                        pctDisplay = `<span class="drop-neutral">0.0%</span>`;
+                                    }
+                                } else {
+                                    dropDisplay = `<span class="drop-neutral" title="Initial benchmark established">Baseline</span>`;
+                                    pctDisplay = `<span class="drop-neutral" title="Initial benchmark established">Established</span>`;
+                                }
+
+                                const countyBadge = r.countyStatus === 'QUALIFIED'
+                                    ? `<span class="event-pill-qual">🏆 Qualified</span>`
+                                    : (r.countyStatus === 'SLOWER' ? `<span class="event-pill-slower">Slower</span>` : '<span style="color:var(--text-muted); font-size:0.75rem;">-</span>');
+
+                                const waDisplay = (r.waPoints && r.waPoints !== '-')
+                                    ? `<span style="font-weight:700; color:${r.waPoints >= 400 ? 'var(--accent-emerald)' : 'var(--text-main)'}">${r.waPoints}</span>`
+                                    : '-';
+
+                                return `
+                                    <tr>
+                                        <td style="font-weight:700;">${r.event}</td>
+                                        <td>${courseBadge}</td>
+                                        <td style="font-family:monospace; font-weight:800; color:var(--accent-cyan);">${r.pbTime}</td>
+                                        <td style="font-family:monospace; color:var(--text-muted); font-size:0.8rem;">${r.convertedTime}</td>
+                                        <td style="font-family:monospace; color:var(--text-muted); font-size:0.8rem;">${r.baselineTime}</td>
+                                        <td>${dropDisplay}</td>
+                                        <td>${pctDisplay}</td>
+                                        <td>${waDisplay}</td>
+                                        <td style="color:var(--text-muted); font-size:0.8rem;">${formatDateDDMMYYYY(r.pbDate)}</td>
+                                        <td style="color:var(--text-muted); font-size:0.8rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${r.meetName}">${r.meetName}</td>
+                                        <td>${countyBadge}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SECTION 2: Race Progression & Competition Log -->
+            <div style="margin-bottom: 1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.6rem;">
+                    <h4 style="font-size: 1rem; font-weight: 800; color: var(--text-main); margin: 0;">
+                        📜 Competition Progression Log (Chronological Swims)
+                    </h4>
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">${allSwimsChronological.length} Recorded Races</span>
+                </div>
+                <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Event</th>
+                                <th>Course</th>
+                                <th>Time</th>
+                                <th>Race Split vs Prior</th>
+                                <th>WA Pts</th>
+                                <th>Meet / Gala</th>
+                                <th>Venue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${allSwimsChronological.map(s => {
+                                let deltaBadge = '<span style="color:var(--text-muted);">-</span>';
+                                if (s.deltaSec !== null) {
+                                    if (s.deltaSec > 0) {
+                                        deltaBadge = `<span class="drop-good">-${s.deltaSec.toFixed(2)}s 🚀</span>`;
+                                    } else if (s.deltaSec < 0) {
+                                        deltaBadge = `<span class="drop-warn">+${Math.abs(s.deltaSec).toFixed(2)}s</span>`;
+                                    } else {
+                                        deltaBadge = `<span class="drop-neutral">0.00s</span>`;
+                                    }
+                                }
+
+                                const pbStar = s.isPBInList ? `<span style="color:var(--accent-amber); margin-left:0.3rem;" title="Current Event PB">⭐</span>` : '';
+
+                                return `
+                                    <tr>
+                                        <td style="font-weight:600; color:var(--text-main);">${formatDateDDMMYYYY(s.date)}</td>
+                                        <td style="font-weight:700;">${s.event || '-'}</td>
+                                        <td>${s.calculatedCourse || s.course}</td>
+                                        <td style="font-family:monospace; font-weight:700; color:var(--accent-cyan);">${s.displayTime || '-'}${pbStar}</td>
+                                        <td>${deltaBadge}</td>
+                                        <td>${s.waPoints || '-'}</td>
+                                        <td style="color:var(--text-muted); font-size:0.8rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${s.meetName}">${s.meetName || '-'}</td>
+                                        <td style="color:var(--text-muted); font-size:0.8rem;">${s.venue || '-'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Report Footer -->
+            <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.78rem; color: var(--text-muted);">
+                <div>Weston-super-Mare Swimming Club • Performance Analytics Hub</div>
+                <div>Official Swim England Progression Data Grounded</div>
+            </div>
+        </div>
+    `;
+
+    bodyElem.innerHTML = reportHTML;
+    modal.classList.remove('hidden');
+}
+
+function closeSwimmerReportModal() {
+    document.getElementById('swimmer-report-modal')?.classList.add('hidden');
+}
+
+function printSwimmerReport() {
+    window.print();
+}
+
+function downloadSwimmerReportCSV(passedName) {
+    const swimmerName = passedName || CURRENT_REPORT_SWIMMER_NAME;
+    if (!swimmerName) return;
+
+    const targetNorm = swimmerName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const swims = (RAW_SWIMMERS_DATA || []).filter(r => (r.swimmerName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '') === targetNorm);
+    if (!swims.length) return;
+
+    const resolvedName = swims[0].swimmerName || swimmerName;
+    const seNumber = swims[0].seNumber || '';
+    const squadName = getSwimmerSquadName(resolvedName);
+    const countyInfo = getCountyInfoForSwimmer(resolvedName, seNumber);
+
+    // Group by Event + Course
+    const eventsMap = {};
+    swims.forEach(s => {
+        const cCourse = getCourse(s);
+        const key = `${s.event}_${cCourse}`;
+        if (!eventsMap[key]) eventsMap[key] = [];
+        eventsMap[key].push({ ...s, calculatedCourse: cCourse });
+    });
+
+    let totalLifetimeDropSec = 0;
+    const pbSummary = [];
+    const allSwimsChronological = [];
+
+    Object.keys(eventsMap).forEach(key => {
+        const list = eventsMap[key].sort((a, b) => new Date(a.date || '1970-01-01') - new Date(b.date || '1970-01-01'));
+        const first = list[0];
+        const best = [...list].sort((a, b) => (Number(a.timeSec) || 999999) - (Number(b.timeSec) || 999999))[0];
+
+        const firstSec = Number(first.timeSec) || 0;
+        const bestSec = Number(best.timeSec) || 0;
+        const dropSec = (firstSec && bestSec && firstSec > bestSec) ? (firstSec - bestSec) : 0;
+        const pctImprove = (firstSec > 0 && dropSec > 0) ? ((dropSec / firstSec) * 100) : 0;
+        totalLifetimeDropSec += dropSec;
+
+        const cStatus = checkCountyStatusForRecord(resolvedName, seNumber, best.event);
+
+        pbSummary.push({
+            event: best.event,
+            course: best.calculatedCourse,
+            pbTime: best.displayTime,
+            convertedTime: best.convertedTime,
+            baselineTime: first.displayTime,
+            baselineDate: first.date,
+            timeDroppedSec: dropSec,
+            improvementPct: pctImprove,
+            waPoints: best.waPoints,
+            pbDate: best.date,
+            meetName: best.meetName,
+            venue: best.venue,
+            countyStatus: cStatus,
+            swimsCount: list.length
+        });
+
+        list.forEach((swim, idx) => {
+            let deltaSec = null;
+            if (idx > 0) {
+                const prevSec = Number(list[idx - 1].timeSec) || 0;
+                const curSec = Number(swim.timeSec) || 0;
+                if (prevSec && curSec) deltaSec = prevSec - curSec;
+            }
+            allSwimsChronological.push({
+                ...swim,
+                deltaSec
+            });
+        });
+    });
+
+    pbSummary.sort((a, b) => a.event.localeCompare(b.event));
+    allSwimsChronological.sort((a, b) => new Date(b.date || '1970-01-01') - new Date(a.date || '1970-01-01'));
+
+    const lines = [];
+    lines.push(`"WESTON-SUPER-MARE SWIMMING CLUB - SWIMMER PERFORMANCE & PROGRESSION REPORT"`);
+    lines.push(`"Swimmer Name:","${resolvedName}","Swim England #:","${seNumber}","Squad:","${squadName}","Date Generated:","${new Date().toLocaleDateString('en-GB')}"`);
+    lines.push(`"Total Events Tracked:","${pbSummary.length}","Total Recorded Swims:","${swims.length}","Total Cumulative Time Dropped:","-${totalLifetimeDropSec.toFixed(2)}s","County Status:","${countyInfo ? (countyInfo.qualifiedCount + ' Events Qualified') : 'Developing'}"`);
+    lines.push(``);
+    lines.push(`"PERSONAL BESTS & LIFETIME IMPROVEMENT SUMMARY"`);
+    lines.push(`"Event","Course","Current PB","Converted Time","Baseline Time","Baseline Date","Time Dropped (sec)","Improvement %","WA Points","PB Date","Meet / Gala","Venue","Somerset County Status","Total Swims"`);
+
+    pbSummary.forEach(r => {
+        const dropStr = r.swimsCount > 1 ? (r.timeDroppedSec > 0 ? `-${r.timeDroppedSec.toFixed(2)}` : '0.00') : 'Baseline';
+        const pctStr = r.swimsCount > 1 ? `${r.improvementPct.toFixed(1)}%` : 'Established';
+        lines.push(`"${r.event}","${r.course}","${r.pbTime}","${r.convertedTime || ''}","${r.baselineTime}","${r.baselineDate}","${dropStr}","${pctStr}","${r.waPoints || '-'}","${r.pbDate}","${(r.meetName || '').replace(/"/g, '""')}","${(r.venue || '').replace(/"/g, '""')}","${r.countyStatus || '-'}","${r.swimsCount}"`);
+    });
+
+    lines.push(``);
+    lines.push(`"CHRONOLOGICAL RACE PROGRESSION LOG"`);
+    lines.push(`"Date","Event","Course","Recorded Time","Time Dropped vs Prior Swim (sec)","WA Points","Meet / Gala","Venue"`);
+
+    allSwimsChronological.forEach(s => {
+        const deltaStr = s.deltaSec !== null ? (s.deltaSec > 0 ? `-${s.deltaSec.toFixed(2)}` : (s.deltaSec < 0 ? `+${Math.abs(s.deltaSec).toFixed(2)}` : '0.00')) : '-';
+        lines.push(`"${s.date}","${s.event}","${s.calculatedCourse || s.course}","${s.displayTime}","${deltaStr}","${s.waPoints || '-'}","${(s.meetName || '').replace(/"/g, '""')}","${(s.venue || '').replace(/"/g, '""')}"`);
+    });
+
+    const csvContent = lines.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const cleanFileName = resolvedName.replace(/[^a-zA-Z0-9]/g, '_');
+    a.download = `Weston_SC_Report_${cleanFileName}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Downloaded performance report for ${resolvedName}!`);
+}
+
+function copySwimmerReportTable(passedName) {
+    const swimmerName = passedName || CURRENT_REPORT_SWIMMER_NAME;
+    if (!swimmerName) return;
+
+    const targetNorm = swimmerName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const swims = (RAW_SWIMMERS_DATA || []).filter(r => (r.swimmerName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '') === targetNorm);
+    if (!swims.length) return;
+
+    const eventsMap = {};
+    swims.forEach(s => {
+        const cCourse = getCourse(s);
+        const key = `${s.event}_${cCourse}`;
+        if (!eventsMap[key]) eventsMap[key] = [];
+        eventsMap[key].push({ ...s, calculatedCourse: cCourse });
+    });
+
+    const pbSummary = [];
+    Object.keys(eventsMap).forEach(key => {
+        const list = eventsMap[key].sort((a, b) => new Date(a.date || '1970-01-01') - new Date(b.date || '1970-01-01'));
+        const first = list[0];
+        const best = [...list].sort((a, b) => (Number(a.timeSec) || 999999) - (Number(b.timeSec) || 999999))[0];
+        const firstSec = Number(first.timeSec) || 0;
+        const bestSec = Number(best.timeSec) || 0;
+        const dropSec = (firstSec && bestSec && firstSec > bestSec) ? (firstSec - bestSec) : 0;
+        const pctImprove = (firstSec > 0 && dropSec > 0) ? ((dropSec / firstSec) * 100) : 0;
+        pbSummary.push({
+            event: best.event,
+            course: best.calculatedCourse,
+            pbTime: best.displayTime,
+            convertedTime: best.convertedTime,
+            baselineTime: first.displayTime,
+            timeDroppedSec: dropSec,
+            improvementPct: pctImprove,
+            waPoints: best.waPoints,
+            pbDate: best.date,
+            meetName: best.meetName,
+            countyStatus: checkCountyStatusForRecord(swimmerName, best.seNumber, best.event),
+            swimsCount: list.length
+        });
+    });
+
+    pbSummary.sort((a, b) => a.event.localeCompare(b.event));
+
+    const rows = [];
+    rows.push(['Event', 'Course', 'Current PB', 'Converted Time', 'Baseline Time', 'Time Dropped', '% Improvement', 'WA Points', 'PB Date', 'Meet / Gala', 'County Status'].join('\t'));
+    pbSummary.forEach(r => {
+        const dropStr = r.swimsCount > 1 ? (r.timeDroppedSec > 0 ? `-${r.timeDroppedSec.toFixed(2)}s` : '0.00s') : 'Baseline';
+        const pctStr = r.swimsCount > 1 ? `${r.improvementPct.toFixed(1)}%` : 'Established';
+        rows.push([
+            r.event,
+            r.course,
+            r.pbTime,
+            r.convertedTime || '',
+            r.baselineTime,
+            dropStr,
+            pctStr,
+            r.waPoints || '-',
+            r.pbDate,
+            r.meetName || '',
+            r.countyStatus || '-'
+        ].join('\t'));
+    });
+
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(rows.join('\n')).then(() => {
+            showToast('Performance table copied to clipboard! Ready to paste into Google Sheets.');
+        }).catch(() => {
+            showToast('Could not copy automatically. Please use Download CSV.', 'error');
+        });
+    } else {
+        showToast('Clipboard access not available. Please use Download CSV.', 'error');
+    }
+}
+
+// =========================================================================
+// 12. SOMERSET COUNTY TIMES & GOOGLE SHEET SYNC MODULE
+// =========================================================================
+const COUNTY_SHEET_STORAGE_KEY = 'WESTON_COUNTY_TIMES_SHEET_URL';
+const DEFAULT_COUNTY_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1J29UMv1JGfz0cemI3sMgCOierIhe8wM0Kik3p5j9ork/export?format=csv&gid=381588361';
+
+let LIVE_COUNTY_DATA = [];
+let ACTIVE_COUNTY_VIEW_MODE = 'swimmers';
+let isFetchingCountyTimes = false;
+
+function normalizeGoogleSheetUrl(url) {
+    if (!url) return '';
+    url = url.trim();
+    if (url.includes('/export?format=csv')) return url;
+    const idMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (!idMatch) return url;
+    const sheetId = idMatch[1];
+    let gid = '';
+    const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
+    if (gidMatch) {
+        gid = `&gid=${gidMatch[1]}`;
+    }
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gid}`;
+}
+
+function getCountySheetUrl() {
+    return localStorage.getItem(COUNTY_SHEET_STORAGE_KEY) || DEFAULT_COUNTY_SHEET_URL;
+}
+
+async function loadLiveCountyTimes(forceRefresh = false) {
+    if (isFetchingCountyTimes) return;
+    isFetchingCountyTimes = true;
+
+    const statusBadge = document.getElementById('county-sync-status-badge');
+    const statusText = document.getElementById('county-sync-status-text');
+    const lastTimeText = document.getElementById('county-sync-last-time');
+
+    const sheetUrl = getCountySheetUrl();
+    const normalizedUrl = normalizeGoogleSheetUrl(sheetUrl);
+
+    try {
+        const fetchUrl = normalizedUrl + (normalizedUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+        const response = await fetch(fetchUrl);
+        if (response.ok) {
+            const csvText = await response.text();
+            const parsed = parseCsvToObjects(csvText);
+
+            const hasCountyData = parsed && parsed.length > 0 && parsed.some(r => {
+                const keys = Object.keys(r).map(k => k.toLowerCase());
+                return keys.some(k => k.includes('qualified') || k.includes('county') || k.includes('swimmer') || k.includes('asa'));
+            });
+
+            if (hasCountyData) {
+                LIVE_COUNTY_DATA = parsed;
+                const validCountyRows = parsed.filter(row => {
+                    const name = getRowVal(row, ['Swimmer Name', 'Name', 'Selected Name']);
+                    const asa  = getRowVal(row, ['ASA Number', 'ASA']);
+                    return name && name !== 'Age Group Qualification Summary' && asa !== 'Swimmer Name';
+                });
+                if (validCountyRows.length > 0) {
+                    COUNTY_SUMMARY = validCountyRows;
+                }
+
+                if (statusBadge) {
+                    statusBadge.style.background = 'rgba(16,185,129,0.15)';
+                    statusBadge.style.color = 'var(--accent-emerald)';
+                    statusBadge.style.borderColor = 'var(--accent-emerald)';
+                }
+                if (statusText) statusText.innerText = 'Live Google Sheet Synced';
+                if (lastTimeText) {
+                    const timeStr = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                    lastTimeText.innerText = `Synced at ${timeStr}`;
+                }
+                renderCountyTimesDashboard();
+                if (forceRefresh) showToast('Live Somerset County times successfully refreshed from Google Sheet!');
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn('Could not fetch live Google Sheet County Times, falling back to local dataset:', err);
+    } finally {
+        isFetchingCountyTimes = false;
+    }
+
+    if (!LIVE_COUNTY_DATA.length && typeof MASTER_DASHBOARD_DATA !== 'undefined' && MASTER_DASHBOARD_DATA['County Times']) {
+        LIVE_COUNTY_DATA = MASTER_DASHBOARD_DATA['County Times'];
+    }
+
+    if (statusBadge) {
+        statusBadge.style.background = 'rgba(6,182,212,0.15)';
+        statusBadge.style.color = 'var(--accent-cyan)';
+        statusBadge.style.borderColor = 'var(--accent-cyan)';
+    }
+    if (statusText) statusText.innerText = 'Club Dataset Active (Offline Fallback)';
+    if (lastTimeText) lastTimeText.innerText = 'Built-in Master Data';
+
+    renderCountyTimesDashboard();
+}
+
+function openCountySheetModal() {
+    const modal = document.getElementById('county-sheet-modal');
+    const input = document.getElementById('county-sheet-input-url');
+    if (input) input.value = getCountySheetUrl();
+    const resultBox = document.getElementById('county-sheet-test-result');
+    if (resultBox) resultBox.style.display = 'none';
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeCountySheetModal() {
+    document.getElementById('county-sheet-modal')?.classList.add('hidden');
+}
+
+function saveCountySheetUrl() {
+    const input = document.getElementById('county-sheet-input-url');
+    const rawVal = input?.value ? input.value.trim() : '';
+    if (!rawVal) {
+        showToast('Please enter a valid Google Sheet URL.', 'error');
+        return;
+    }
+
+    const normalized = normalizeGoogleSheetUrl(rawVal);
+    localStorage.setItem(COUNTY_SHEET_STORAGE_KEY, normalized);
+    closeCountySheetModal();
+    showToast('Google Sheet URL saved! Fetching live updates...');
+    loadLiveCountyTimes(true);
+}
+
+function resetCountySheetUrl() {
+    localStorage.removeItem(COUNTY_SHEET_STORAGE_KEY);
+    const input = document.getElementById('county-sheet-input-url');
+    if (input) input.value = DEFAULT_COUNTY_SHEET_URL;
+    closeCountySheetModal();
+    showToast('Restored default Somerset County dataset Google Sheet.');
+    loadLiveCountyTimes(true);
+}
+
+function setCountyTimesViewMode(mode) {
+    ACTIVE_COUNTY_VIEW_MODE = mode;
+    const btnSwimmers = document.getElementById('county-mode-btn-swimmers');
+    const btnStandards = document.getElementById('county-mode-btn-standards');
+    const containerSwimmers = document.getElementById('county-swimmers-table-container');
+    const containerStandards = document.getElementById('county-standards-table-container');
+    const filtersRow = document.getElementById('county-swimmer-filters');
+
+    if (mode === 'swimmers') {
+        if (btnSwimmers) {
+            btnSwimmers.style.background = 'var(--accent-cyan)';
+            btnSwimmers.style.color = '#04131f';
+            btnSwimmers.style.border = 'none';
+        }
+        if (btnStandards) {
+            btnStandards.style.background = 'rgba(255,255,255,0.06)';
+            btnStandards.style.color = 'var(--text-muted)';
+            btnStandards.style.border = '1px solid var(--border-color)';
+        }
+        if (containerSwimmers) containerSwimmers.style.display = '';
+        if (containerStandards) containerStandards.style.display = 'none';
+        if (filtersRow) filtersRow.style.display = 'flex';
+        filterCountyTimes();
+    } else {
+        if (btnStandards) {
+            btnStandards.style.background = 'var(--accent-cyan)';
+            btnStandards.style.color = '#04131f';
+            btnStandards.style.border = 'none';
+        }
+        if (btnSwimmers) {
+            btnSwimmers.style.background = 'rgba(255,255,255,0.06)';
+            btnSwimmers.style.color = 'var(--text-muted)';
+            btnSwimmers.style.border = '1px solid var(--border-color)';
+        }
+        if (containerSwimmers) containerSwimmers.style.display = 'none';
+        if (containerStandards) containerStandards.style.display = '';
+        if (filtersRow) filtersRow.style.display = 'none';
+        renderCountyStandardsTable();
+    }
+}
+
+function goToCountyTimesForSwimmer(swimmerName) {
+    closeSwimmerModal();
+    switchView('countytimes');
+    const searchInput = document.getElementById('county-search-input');
+    if (searchInput) {
+        searchInput.value = swimmerName || '';
+        filterCountyTimes();
+    }
+}
+
+function getActiveSquadCountyData() {
+    const rawList = (LIVE_COUNTY_DATA && LIVE_COUNTY_DATA.length) 
+        ? LIVE_COUNTY_DATA 
+        : (COUNTY_SUMMARY && COUNTY_SUMMARY.length ? COUNTY_SUMMARY : (typeof MASTER_DASHBOARD_DATA !== 'undefined' ? (MASTER_DASHBOARD_DATA['County Times'] || []) : []));
+
+    const activeSquadList = getActiveSquadSwimmerNames();
+    const squadSwimmersSet = new Set(activeSquadList.map(n => (n || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '')));
+
+    // Strict business rule: ONLY swimmers currently in Squad Movements (1J29UMv1JGfz0cemI3sMgCOierIhe8wM0Kik3p5j9ork) are tracked
+    return rawList.filter(row => {
+        const name = getRowVal(row, ['Swimmer Name', 'Name', 'Selected Name']);
+        const asa  = getRowVal(row, ['ASA Number', 'ASA']);
+        if (!name || name === 'Age Group Qualification Summary' || asa === 'Swimmer Name') return false;
+        
+        const cleanName = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+        return squadSwimmersSet.has(cleanName);
+    });
+}
+
+function renderCountyTimesDashboard() {
+    const data = getActiveSquadCountyData();
+
+    let totalSwimmers = data.length;
+    let qualifiedSwimmersCount = 0;
+    let totalQualifiedSwims = 0;
+    let totalSlowerSwims = 0;
+
+    data.forEach(r => {
+        const qCount = parseInt(getRowVal(r, ['Qualified Events Count', 'Qualified Count', 'Qualified']), 10) || 0;
+        const sCount = parseInt(getRowVal(r, ['Slower Events Count', 'Slower Count', 'Slower']), 10) || 0;
+        if (qCount > 0) qualifiedSwimmersCount++;
+        totalQualifiedSwims += qCount;
+        totalSlowerSwims += sCount;
+    });
+
+    const elTotalSwimmers = document.getElementById('kpi-count-county-swimmers');
+    const elSubTotalSwimmers = document.getElementById('kpi-sub-county-swimmers');
+    const elQualSwimmers = document.getElementById('kpi-count-county-qualified-swimmers');
+    const elSubQualSwimmers = document.getElementById('kpi-sub-county-qualified-swimmers');
+    const elQualSwims = document.getElementById('kpi-count-county-qualified-swims');
+    const elSlowerSwims = document.getElementById('kpi-count-county-slower-swims');
+
+    if (elTotalSwimmers) elTotalSwimmers.innerText = totalSwimmers;
+    if (elSubTotalSwimmers) elSubTotalSwimmers.innerText = `${totalSwimmers} Swimmers Tracked`;
+    if (elQualSwimmers) elQualSwimmers.innerText = qualifiedSwimmersCount;
+    if (elSubQualSwimmers) elSubQualSwimmers.innerText = `${qualifiedSwimmersCount} Swimmers with ≥1 QT`;
+    if (elQualSwims) elQualSwims.innerText = totalQualifiedSwims;
+    if (elSlowerSwims) elSlowerSwims.innerText = totalSlowerSwims;
+
+    const overviewBadge = document.getElementById('overview-countytimes-badge');
+    if (overviewBadge) {
+        overviewBadge.innerText = `${qualifiedSwimmersCount} Swimmers • ${totalQualifiedSwims} QTs`;
+    }
+
+    // Populate Squad Dropdown
+    const squadSelect = document.getElementById('county-squad-select');
+    if (squadSelect) {
+        const curVal = squadSelect.value;
+        const squads = new Set();
+        data.forEach(r => {
+            const name = getRowVal(r, ['Swimmer Name', 'Name', 'Selected Name']);
+            const sq = getSwimmerSquadName(name);
+            if (sq) squads.add(sq);
+        });
+        const sortedSquads = Array.from(squads).sort();
+        squadSelect.innerHTML = `<option value="ALL">All Squads (${sortedSquads.length})</option>` +
+            sortedSquads.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (curVal && Array.from(squadSelect.options).some(o => o.value === curVal)) {
+            squadSelect.value = curVal;
+        }
+    }
+
+    if (ACTIVE_COUNTY_VIEW_MODE === 'standards') {
+        renderCountyStandardsTable();
+    } else {
+        filterCountyTimes();
+    }
+}
+
+function filterCountyTimes() {
+    const data = getActiveSquadCountyData();
+
+    const searchVal = (document.getElementById('county-search-input')?.value || '').trim().toLowerCase();
+    const squadVal = document.getElementById('county-squad-select')?.value || 'ALL';
+    const statusVal = document.getElementById('county-status-select')?.value || 'ALL';
+    const genderVal = document.getElementById('county-gender-select')?.value || 'ALL';
+    const ageVal = document.getElementById('county-age-select')?.value || 'ALL';
+
+    const filtered = data.filter(r => {
+        const name = getRowVal(r, ['Swimmer Name', 'Name', 'Selected Name']);
+        const asa = getRowVal(r, ['ASA Number', 'ASA']);
+        const gender = getRowVal(r, ['Gender', 'Sex']);
+        const age = getRowVal(r, ['Age', 'Age Group']);
+        const squad = getSwimmerSquadName(name);
+        const qCount = parseInt(getRowVal(r, ['Qualified Events Count', 'Qualified Count', 'Qualified']), 10) || 0;
+
+        const allEvents = [];
+        for (let i = 1; i <= 20; i++) {
+            const ev = getRowVal(r, [`Event ${i}`, `Event${i}`]);
+            if (ev) allEvents.push(ev);
+        }
+        const fullSearchText = `${name} ${asa} ${gender} ${age} ${squad} ${allEvents.join(' ')}`.toLowerCase();
+
+        if (searchVal && !fullSearchText.includes(searchVal)) return false;
+        if (squadVal !== 'ALL' && squad !== squadVal) return false;
+        if (genderVal !== 'ALL') {
+            if (genderVal === 'Girls' && !gender.toLowerCase().includes('girl') && !gender.toLowerCase().includes('female')) return false;
+            if (genderVal === 'Boys' && !gender.toLowerCase().includes('boy') && !gender.toLowerCase().includes('male')) return false;
+        }
+        if (ageVal !== 'ALL') {
+            if (ageVal === '18+' && parseInt(age, 10) < 18) return false;
+            if (ageVal !== '18+' && String(age) !== String(ageVal)) return false;
+        }
+        if (statusVal === 'QUALIFIED' && qCount === 0) return false;
+        if (statusVal === 'DEVELOPING' && qCount > 0) return false;
+
+        return true;
+    });
+
+    const resultCountEl = document.getElementById('county-result-count');
+    if (resultCountEl) {
+        resultCountEl.innerHTML = `Showing <strong>${filtered.length}</strong> of <strong>${data.length}</strong> Weston SC swimmers in Somerset County Matrix`;
+    }
+
+    const tbody = document.getElementById('county-times-tbody');
+    if (!tbody) return;
+
+    if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:2.5rem;">No matching Somerset County swimmer records found.</td></tr>`;
+        return;
+    }
+
+    filtered.sort((a, b) => {
+        const qA = parseInt(getRowVal(a, ['Qualified Events Count', 'Qualified Count', 'Qualified']), 10) || 0;
+        const qB = parseInt(getRowVal(b, ['Qualified Events Count', 'Qualified Count', 'Qualified']), 10) || 0;
+        if (qB !== qA) return qB - qA;
+        const nA = getRowVal(a, ['Swimmer Name', 'Name', 'Selected Name']);
+        const nB = getRowVal(b, ['Swimmer Name', 'Name', 'Selected Name']);
+        return nA.localeCompare(nB);
+    });
+
+    tbody.innerHTML = filtered.map(r => {
+        const name = getRowVal(r, ['Swimmer Name', 'Name', 'Selected Name']);
+        const asa = getRowVal(r, ['ASA Number', 'ASA']);
+        const gender = getRowVal(r, ['Gender', 'Sex']) || '-';
+        const age = getRowVal(r, ['Age', 'Age Group']) || '-';
+        const squad = getSwimmerSquadName(name);
+        const timesTracked = getRowVal(r, ['Events With Times', 'Times Tracked']) || '-';
+        const qCount = parseInt(getRowVal(r, ['Qualified Events Count', 'Qualified Count', 'Qualified']), 10) || 0;
+        const sCount = parseInt(getRowVal(r, ['Slower Events Count', 'Slower Count', 'Slower']), 10) || 0;
+
+        const qualPills = [];
+        const slowerPills = [];
+
+        for (let i = 1; i <= 20; i++) {
+            const ev = getRowVal(r, [`Event ${i}`, `Event${i}`]);
+            if (ev) {
+                if (ev.toLowerCase().includes('qualified')) {
+                    const cleanName = ev.replace(/\s*\(qualified\)\s*/i, '').trim();
+                    qualPills.push(`<span class="event-pill-qual">✓ ${cleanName}</span>`);
+                } else if (ev.toLowerCase().includes('slower')) {
+                    const cleanName = ev.replace(/\s*\(slower\)\s*/i, '').trim();
+                    slowerPills.push(`<span class="event-pill-slower">${cleanName}</span>`);
+                }
+            }
+        }
+
+        const qualCountBadge = qCount > 0
+            ? `<span style="background:rgba(16,185,129,0.18); color:var(--accent-emerald); border:1px solid var(--accent-emerald); font-weight:800; font-size:0.75rem; padding:0.18rem 0.55rem; border-radius:6px;">🏆 ${qCount} Qualified</span>`
+            : `<span style="color:var(--text-muted); font-size:0.75rem;">0 QTs</span>`;
+
+        const slowerCountBadge = sCount > 0
+            ? `<span style="background:rgba(245,158,11,0.12); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.4); font-weight:700; font-size:0.75rem; padding:0.18rem 0.55rem; border-radius:6px;">${sCount} Chasing</span>`
+            : `<span style="color:var(--text-muted); font-size:0.75rem;">-</span>`;
+
+        const swimmerLink = `<a href="javascript:void(0)" onclick="openSwimmerModal('${asa}', '${name.replace(/'/g, "\\'")}')" style="color:var(--text-main); font-weight:700; text-decoration:none; border-bottom:1px dashed var(--accent-cyan);" title="Click to view full swimmer profile & PBs">${name} 👤</a>`;
+
+        return `
+            <tr>
+                <td>${swimmerLink}</td>
+                <td style="font-family:monospace; color:var(--accent-cyan); font-weight:600;">${asa || '-'}</td>
+                <td><span style="font-size:0.8rem; background:rgba(255,255,255,0.04); border:1px solid var(--border-color); padding:0.15rem 0.45rem; border-radius:4px;">${squad}</span></td>
+                <td>${gender} (Age ${age})</td>
+                <td style="font-weight:600;">${timesTracked}</td>
+                <td>${qualCountBadge}</td>
+                <td>${slowerCountBadge}</td>
+                <td style="max-width:280px;">${qualPills.length ? qualPills.join(' ') : '<span style="color:var(--text-muted); font-size:0.75rem;">None</span>'}</td>
+                <td style="max-width:280px;">${slowerPills.length ? slowerPills.join(' ') : '<span style="color:var(--text-muted); font-size:0.75rem;">None</span>'}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderCountyStandardsTable() {
+    const tbody = document.getElementById('county-standards-tbody');
+    if (!tbody) return;
+
+    const catSelect = document.getElementById('standards-cat-select');
+    const category = catSelect?.value || 'Female';
+
+    if (typeof COUNTY_STANDARDS === 'undefined' || !COUNTY_STANDARDS[category]) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">County qualifying standards definition not loaded.</td></tr>`;
+        return;
+    }
+
+    const catData = COUNTY_STANDARDS[category];
+    const events = Object.keys(catData);
+    const ageCols = ['10', '11', '12', '13', '14', '15', '16', '17', '18+'];
+
+    tbody.innerHTML = events.map(evt => {
+        const ageCells = ageCols.map(age => {
+            const timeObj = catData[evt] ? (catData[evt][age] || catData[evt][age.replace('+', '')]) : null;
+            if (!timeObj || !timeObj.display) return '<td style="color:var(--text-muted); font-family:monospace; text-align:center;">-</td>';
+            return `<td style="font-family:monospace; font-weight:700; color:var(--accent-cyan); text-align:center;">${timeObj.display}</td>`;
+        }).join('');
+
+        return `
+            <tr>
+                <td style="font-weight:700; color:var(--text-main);">${evt}</td>
+                ${ageCells}
+            </tr>
+        `;
+    }).join('');
+}
+
+function downloadCountyTimesCSV() {
+    const data = getActiveSquadCountyData();
+
+    const lines = [];
+    lines.push(`"WESTON-SUPER-MARE SWIMMING CLUB - SOMERSET COUNTY CHAMPIONSHIP QUALIFIERS"`);
+    lines.push(`"Source:","Google Sheet Synced Data","Export Date:","${new Date().toLocaleDateString('en-GB')}"`);
+    lines.push(``);
+    lines.push(`"Swimmer Name","ASA / SE #","Squad","Gender","Age","Events with Times","Qualified Events Count","Slower Events Count","Qualified Events","Slower Events"`);
+
+    data.forEach(r => {
+        const name = getRowVal(r, ['Swimmer Name', 'Name', 'Selected Name']);
+        const asa = getRowVal(r, ['ASA Number', 'ASA']);
+        const gender = getRowVal(r, ['Gender', 'Sex']);
+        const age = getRowVal(r, ['Age', 'Age Group']);
+        const squad = getSwimmerSquadName(name);
+        const timesTracked = getRowVal(r, ['Events With Times', 'Times Tracked']);
+        const qCount = parseInt(getRowVal(r, ['Qualified Events Count', 'Qualified Count', 'Qualified']), 10) || 0;
+        const sCount = parseInt(getRowVal(r, ['Slower Events Count', 'Slower Count', 'Slower']), 10) || 0;
+
+        const qualEvents = [];
+        const slowerEvents = [];
+        for (let i = 1; i <= 20; i++) {
+            const ev = getRowVal(r, [`Event ${i}`, `Event${i}`]);
+            if (ev) {
+                if (ev.toLowerCase().includes('qualified')) qualEvents.push(ev.replace(/\s*\(qualified\)\s*/i, '').trim());
+                else if (ev.toLowerCase().includes('slower')) slowerEvents.push(ev.replace(/\s*\(slower\)\s*/i, '').trim());
+            }
+        }
+
+        lines.push(`"${name}","${asa}","${squad}","${gender}","${age}","${timesTracked}","${qCount}","${sCount}","${qualEvents.join('; ')}","${slowerEvents.join('; ')}"`);
+    });
+
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Weston_SC_Somerset_County_Times_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Downloaded Somerset County Times CSV!');
+}
+
+function copyCountyTimesTable() {
+    const data = getActiveSquadCountyData();
+
+    const rows = [];
+    rows.push(['Swimmer Name', 'ASA #', 'Squad', 'Gender', 'Age', 'Times Tracked', 'Qualified Count', 'Slower Count', 'Qualified Events', 'Slower Events'].join('\t'));
+
+    data.forEach(r => {
+        const name = getRowVal(r, ['Swimmer Name', 'Name', 'Selected Name']);
+        const asa = getRowVal(r, ['ASA Number', 'ASA']);
+        const gender = getRowVal(r, ['Gender', 'Sex']);
+        const age = getRowVal(r, ['Age', 'Age Group']);
+        const squad = getSwimmerSquadName(name);
+        const timesTracked = getRowVal(r, ['Events With Times', 'Times Tracked']);
+        const qCount = parseInt(getRowVal(r, ['Qualified Events Count', 'Qualified Count', 'Qualified']), 10) || 0;
+        const sCount = parseInt(getRowVal(r, ['Slower Events Count', 'Slower Count', 'Slower']), 10) || 0;
+
+        const qualEvents = [];
+        const slowerEvents = [];
+        for (let i = 1; i <= 20; i++) {
+            const ev = getRowVal(r, [`Event ${i}`, `Event${i}`]);
+            if (ev) {
+                if (ev.toLowerCase().includes('qualified')) qualEvents.push(ev.replace(/\s*\(qualified\)\s*/i, '').trim());
+                else if (ev.toLowerCase().includes('slower')) slowerEvents.push(ev.replace(/\s*\(slower\)\s*/i, '').trim());
+            }
+        }
+
+        rows.push([
+            name,
+            asa,
+            squad,
+            gender,
+            age,
+            timesTracked,
+            qCount,
+            sCount,
+            qualEvents.join(', '),
+            slowerEvents.join(', ')
+        ].join('\t'));
+    });
+
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(rows.join('\n')).then(() => {
+            showToast('Somerset County Times table copied to clipboard! Ready to paste into Google Sheets.');
+        }).catch(() => {
+            showToast('Could not copy automatically. Please use Download CSV.', 'error');
+        });
+    } else {
+        showToast('Clipboard access not available. Please use Download CSV.', 'error');
+    }
+}
+
+// Global Exports
+if (typeof window !== 'undefined') {
+    window.initDashboard = initDashboard;
+    window.switchView = switchView;
+    window.filterSwimmers = filterSwimmers;
+    window.filterCalendar = filterCalendar;
+    window.loadLiveMeetCalendar = loadLiveMeetCalendar;
+    window.filterQualifiers = filterQualifiers;
+    window.resetQualifiersFilters = resetQualifiersFilters;
+    window.setQualifiersTierFilter = setQualifiersTierFilter;
+    window.openQualifierSwimmerModal = openQualifierSwimmerModal;
+    window.closeQualifierSwimmerModal = closeQualifierSwimmerModal;
+    window.renderQualifiersDashboard = renderQualifiersDashboard;
+    window.EVENT_STROKE_MAP = EVENT_STROKE_MAP;
+    window.buildSwimEnglandHistoryUrl = buildSwimEnglandHistoryUrl;
+    window.openSwimmerModal = openSwimmerModal;
+    window.closeSwimmerModal = closeSwimmerModal;
+    window.openNoticesModal = openNoticesModal;
+    window.closeNoticesModal = closeNoticesModal;
+    window.dismissTopBanner = dismissTopBanner;
+    window.showToast = showToast;
+    window.getSwimmerSquadName = getSwimmerSquadName;
+    window.getActiveSquadSwimmerNames = getActiveSquadSwimmerNames;
+    window.getActiveSquadCountyData = getActiveSquadCountyData;
+    window.goToCountyTimesForSwimmer = goToCountyTimesForSwimmer;
+    window.openCurrentSwimmerReport = openCurrentSwimmerReport;
+    window.openSwimmerReportModal = openSwimmerReportModal;
+    window.closeSwimmerReportModal = closeSwimmerReportModal;
+    window.printSwimmerReport = printSwimmerReport;
+    window.downloadSwimmerReportCSV = downloadSwimmerReportCSV;
+    window.copySwimmerReportTable = copySwimmerReportTable;
+    window.loadLiveCountyTimes = loadLiveCountyTimes;
+    window.openCountySheetModal = openCountySheetModal;
+    window.closeCountySheetModal = closeCountySheetModal;
+    window.saveCountySheetUrl = saveCountySheetUrl;
+    window.resetCountySheetUrl = resetCountySheetUrl;
+    window.setCountyTimesViewMode = setCountyTimesViewMode;
+    window.renderCountyTimesDashboard = renderCountyTimesDashboard;
+    window.filterCountyTimes = filterCountyTimes;
+    window.renderCountyStandardsTable = renderCountyStandardsTable;
+    window.downloadCountyTimesCSV = downloadCountyTimesCSV;
+    window.copyCountyTimesTable = copyCountyTimesTable;
+
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDashboard);
+        } else {
+            initDashboard();
+        }
+        window.addEventListener('load', initDashboard);
+    }
+}
