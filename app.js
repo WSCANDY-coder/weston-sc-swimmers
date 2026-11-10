@@ -2623,7 +2623,7 @@ function copySwimmerReportTable(passedName) {
 // 12. SOMERSET COUNTY TIMES & GOOGLE SHEET SYNC MODULE
 // =========================================================================
 const COUNTY_SHEET_STORAGE_KEY = 'WESTON_COUNTY_TIMES_SHEET_URL';
-const DEFAULT_COUNTY_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1J29UMv1JGfz0cemI3sMgCOierIhe8wM0Kik3p5j9ork/export?format=csv&gid=381588361';
+const DEFAULT_COUNTY_SHEET_URL = '';
 
 let LIVE_COUNTY_DATA = [];
 let ACTIVE_COUNTY_VIEW_MODE = 'swimmers';
@@ -2645,7 +2645,17 @@ function normalizeGoogleSheetUrl(url) {
 }
 
 function getCountySheetUrl() {
-    return localStorage.getItem(COUNTY_SHEET_STORAGE_KEY) || DEFAULT_COUNTY_SHEET_URL;
+    try {
+        const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(COUNTY_SHEET_STORAGE_KEY) : null;
+        // Purge if stored URL is the squad movements sheet by mistake
+        if (stored && (stored.includes('381588361') || stored.includes('1J29UMv1JGfz0cemI3sMgCOierIhe8wM0Kik3p5j9ork'))) {
+            localStorage.removeItem(COUNTY_SHEET_STORAGE_KEY);
+            return DEFAULT_COUNTY_SHEET_URL;
+        }
+        return stored || DEFAULT_COUNTY_SHEET_URL;
+    } catch (e) {
+        return DEFAULT_COUNTY_SHEET_URL;
+    }
 }
 
 async function loadLiveCountyTimes(forceRefresh = false) {
@@ -2659,6 +2669,20 @@ async function loadLiveCountyTimes(forceRefresh = false) {
     const sheetUrl = getCountySheetUrl();
     const normalizedUrl = normalizeGoogleSheetUrl(sheetUrl);
 
+    if (!normalizedUrl) {
+        LIVE_COUNTY_DATA = [];
+        if (statusBadge) {
+            statusBadge.style.background = 'rgba(6,182,212,0.15)';
+            statusBadge.style.color = 'var(--accent-cyan)';
+            statusBadge.style.borderColor = 'var(--accent-cyan)';
+        }
+        if (statusText) statusText.innerText = 'Club Dataset Active';
+        if (lastTimeText) lastTimeText.innerText = 'Built-in Master Data';
+        isFetchingCountyTimes = false;
+        renderCountyTimesDashboard();
+        return;
+    }
+
     try {
         const fetchUrl = normalizedUrl + (normalizedUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
         const response = await fetch(fetchUrl);
@@ -2666,21 +2690,20 @@ async function loadLiveCountyTimes(forceRefresh = false) {
             const csvText = await response.text();
             const parsed = parseCsvToObjects(csvText);
 
-            const hasCountyData = parsed && parsed.length > 0 && parsed.some(r => {
-                const keys = Object.keys(r).map(k => k.toLowerCase());
-                return keys.some(k => k.includes('qualified') || k.includes('county') || k.includes('swimmer') || k.includes('asa'));
+            // Strictly validate that this sheet actually contains swimmer county qualification rows:
+            const validCountyRows = (parsed || []).filter(row => {
+                const name = getRowVal(row, ['Swimmer Name', 'Name', 'Selected Name']);
+                const asa  = getRowVal(row, ['ASA Number', 'ASA']);
+                const hasQualCol = Object.keys(row).some(k => {
+                    const lk = k.toLowerCase();
+                    return lk.includes('qualified') || lk.includes('slower') || lk.includes('event');
+                });
+                return name && name !== 'Age Group Qualification Summary' && asa !== 'Swimmer Name' && hasQualCol;
             });
 
-            if (hasCountyData) {
-                LIVE_COUNTY_DATA = parsed;
-                const validCountyRows = parsed.filter(row => {
-                    const name = getRowVal(row, ['Swimmer Name', 'Name', 'Selected Name']);
-                    const asa  = getRowVal(row, ['ASA Number', 'ASA']);
-                    return name && name !== 'Age Group Qualification Summary' && asa !== 'Swimmer Name';
-                });
-                if (validCountyRows.length > 0) {
-                    COUNTY_SUMMARY = validCountyRows;
-                }
+            if (validCountyRows.length > 0) {
+                LIVE_COUNTY_DATA = validCountyRows;
+                COUNTY_SUMMARY = validCountyRows;
 
                 if (statusBadge) {
                     statusBadge.style.background = 'rgba(16,185,129,0.15)';
@@ -2695,16 +2718,21 @@ async function loadLiveCountyTimes(forceRefresh = false) {
                 renderCountyTimesDashboard();
                 if (forceRefresh) showToast('Live Somerset County times successfully refreshed from Google Sheet!');
                 return;
+            } else {
+                console.warn('Connected Google Sheet does not contain swimmer county qualification columns. Keeping built-in club dataset.');
+                LIVE_COUNTY_DATA = [];
+                if (forceRefresh) showToast('Google Sheet reached, but no county times columns were found. Displaying club dataset.', 'warning');
             }
         }
     } catch (err) {
         console.warn('Could not fetch live Google Sheet County Times, falling back to local dataset:', err);
+        LIVE_COUNTY_DATA = [];
     } finally {
         isFetchingCountyTimes = false;
     }
 
     if (!LIVE_COUNTY_DATA.length && typeof MASTER_DASHBOARD_DATA !== 'undefined' && MASTER_DASHBOARD_DATA['County Times']) {
-        LIVE_COUNTY_DATA = MASTER_DASHBOARD_DATA['County Times'];
+        LIVE_COUNTY_DATA = [];
     }
 
     if (statusBadge) {
@@ -2712,7 +2740,7 @@ async function loadLiveCountyTimes(forceRefresh = false) {
         statusBadge.style.color = 'var(--accent-cyan)';
         statusBadge.style.borderColor = 'var(--accent-cyan)';
     }
-    if (statusText) statusText.innerText = 'Club Dataset Active (Offline Fallback)';
+    if (statusText) statusText.innerText = 'Club Dataset Active';
     if (lastTimeText) lastTimeText.innerText = 'Built-in Master Data';
 
     renderCountyTimesDashboard();
@@ -2749,9 +2777,10 @@ function saveCountySheetUrl() {
 function resetCountySheetUrl() {
     localStorage.removeItem(COUNTY_SHEET_STORAGE_KEY);
     const input = document.getElementById('county-sheet-input-url');
-    if (input) input.value = DEFAULT_COUNTY_SHEET_URL;
+    if (input) input.value = '';
+    LIVE_COUNTY_DATA = [];
     closeCountySheetModal();
-    showToast('Restored default Somerset County dataset Google Sheet.');
+    showToast('Restored built-in Somerset County club dataset.');
     loadLiveCountyTimes(true);
 }
 
