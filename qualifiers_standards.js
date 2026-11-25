@@ -1,5 +1,5 @@
 // WESTON SC - COUNTY & REGIONAL QUALIFIERS STANDARDS & DATA MODULE
-// Generated: 2026-10-23T17:05:18.211582
+// Generated: 2026-11-25T18:35:53.562774
 
 const COUNTY_STANDARDS = {
   "Female": {
@@ -5796,7 +5796,7 @@ const SWIMMERS_METADATA = {
     "seNumber": 1637418,
     "category": "Female",
     "age": 17,
-    "squad": "Regional Performance"
+    "squad": "Regional Development"
   },
   "austin hodder": {
     "swimmerName": "Austin Hodder",
@@ -5817,7 +5817,7 @@ const SWIMMERS_METADATA = {
     "seNumber": 1805664,
     "category": "Female",
     "age": 12,
-    "squad": "Junior Development"
+    "squad": "Junior"
   },
   "bethany thomas": {
     "swimmerName": "Bethany Thomas",
@@ -5831,7 +5831,7 @@ const SWIMMERS_METADATA = {
     "seNumber": 1721976,
     "category": "Male/Open",
     "age": 12,
-    "squad": "County Performance"
+    "squad": "County Development"
   },
   "cara hobden": {
     "swimmerName": "Cara Hobden",
@@ -5859,7 +5859,7 @@ const SWIMMERS_METADATA = {
     "seNumber": 1824810,
     "category": "Female",
     "age": 13,
-    "squad": "County Performance"
+    "squad": "County Development"
   },
   "emil faradzov": {
     "swimmerName": "Emil Faradzov",
@@ -5889,33 +5889,12 @@ const SWIMMERS_METADATA = {
     "age": 14,
     "squad": "Regional Development"
   },
-  "francesca flack": {
-    "swimmerName": "Francesca Flack",
-    "seNumber": 1818396,
-    "category": "Female",
-    "age": 16,
-    "squad": "Regional Performance"
-  },
   "freddie marshall": {
     "swimmerName": "Freddie Marshall",
     "seNumber": 1721977,
     "category": "Male/Open",
     "age": 14,
     "squad": "Regional Development"
-  },
-  "freddy tembey barnard": {
-    "swimmerName": "Freddy Tembey Barnard",
-    "seNumber": 1647953,
-    "category": "Male/Open",
-    "age": 17,
-    "squad": "Club Swimmer"
-  },
-  "freya godfrey": {
-    "swimmerName": "Freya Godfrey",
-    "seNumber": 1812258,
-    "category": "Female",
-    "age": 14,
-    "squad": "County Development"
   },
   "freya hoare-matthews": {
     "swimmerName": "Freya Hoare-Matthews",
@@ -5938,26 +5917,12 @@ const SWIMMERS_METADATA = {
     "age": 14,
     "squad": "County Development"
   },
-  "isabelle topham": {
-    "swimmerName": "Isabelle Topham",
-    "seNumber": 1289467,
-    "category": "Female",
-    "age": 16,
-    "squad": "Club Swimmer"
-  },
-  "jessica knight": {
-    "swimmerName": "Jessica Knight",
-    "seNumber": 910448,
-    "category": "Female",
-    "age": 24,
-    "squad": "Club Swimmer"
-  },
   "jessica waller": {
     "swimmerName": "Jessica Waller",
     "seNumber": 1640617,
     "category": "Female",
     "age": 17,
-    "squad": "Regional Performance"
+    "squad": "Regional Development"
   },
   "lola tembey barnard": {
     "swimmerName": "Lola Tembey Barnard",
@@ -5973,26 +5938,12 @@ const SWIMMERS_METADATA = {
     "age": 14,
     "squad": "County Development"
   },
-  "madeleine soper": {
-    "swimmerName": "Madeleine Soper",
-    "seNumber": 852500,
-    "category": "Female",
-    "age": 24,
-    "squad": "Club Swimmer"
-  },
-  "oliver tomlinson": {
-    "swimmerName": "Oliver Tomlinson",
-    "seNumber": 1120210,
-    "category": "Male/Open",
-    "age": 19,
-    "squad": "Club Swimmer"
-  },
   "oliver waller": {
     "swimmerName": "Oliver Waller",
     "seNumber": 1729678,
     "category": "Male/Open",
     "age": 15,
-    "squad": "County Performance"
+    "squad": "County Development"
   },
   "oscar crow": {
     "swimmerName": "Oscar Crow",
@@ -6001,13 +5952,6 @@ const SWIMMERS_METADATA = {
     "age": 14,
     "squad": "County Development"
   },
-  "rebecca flack": {
-    "swimmerName": "Rebecca Flack",
-    "seNumber": 1826632,
-    "category": "Female",
-    "age": 20,
-    "squad": "Regional Performance"
-  },
   "rosie livesey": {
     "swimmerName": "Rosie Livesey",
     "seNumber": 1653840,
@@ -6015,26 +5959,19 @@ const SWIMMERS_METADATA = {
     "age": 13,
     "squad": "Regional Development"
   },
-  "ruby soper": {
-    "swimmerName": "Ruby Soper",
-    "seNumber": 852501,
-    "category": "Female",
-    "age": 26,
-    "squad": "Club Swimmer"
-  },
   "seth gould": {
     "swimmerName": "Seth Gould",
     "seNumber": 1740229,
     "category": "Male/Open",
     "age": 15,
-    "squad": "County Performance"
+    "squad": "County Development"
   },
   "siena blackshaw": {
     "swimmerName": "Siena Blackshaw",
     "seNumber": 1615657,
     "category": "Female",
     "age": 17,
-    "squad": "Regional Performance"
+    "squad": "Regional Development"
   },
   "sophia davis": {
     "swimmerName": "Sophia Davis",
@@ -6043,26 +5980,89 @@ const SWIMMERS_METADATA = {
     "age": 14,
     "squad": "Regional Development"
   },
-  "tristan soper": {
-    "swimmerName": "Tristan Soper",
-    "seNumber": 865987,
-    "category": "Male/Open",
-    "age": 22,
-    "squad": "Club Swimmer"
-  },
   "victor tsang": {
     "swimmerName": "Victor Tsang",
     "seNumber": 1812256,
     "category": "Male/Open",
     "age": 10,
-    "squad": "Junior Development"
+    "squad": "Junior"
   },
   "zac oates": {
     "swimmerName": "Zac Oates",
     "seNumber": 1702384,
     "category": "Male/Open",
     "age": 17,
-    "squad": "Regional Performance"
+    "squad": "Regional Development"
+  },
+  "francesca flack": {
+    "swimmerName": "Francesca Flack",
+    "seNumber": 1818396,
+    "category": "Female",
+    "age": 15,
+    "squad": "Club Swimmer"
+  },
+  "freddy tembey barnard": {
+    "swimmerName": "Freddy Tembey Barnard",
+    "seNumber": 1647953,
+    "category": "Male/Open",
+    "age": 16,
+    "squad": "Club Swimmer"
+  },
+  "freya godfrey": {
+    "swimmerName": "Freya Godfrey",
+    "seNumber": 1812258,
+    "category": "Female",
+    "age": 13,
+    "squad": "Club Swimmer"
+  },
+  "isabelle topham": {
+    "swimmerName": "Isabelle Topham",
+    "seNumber": 1289467,
+    "category": "Female",
+    "age": 15,
+    "squad": "Club Swimmer"
+  },
+  "jessica knight": {
+    "swimmerName": "Jessica Knight",
+    "seNumber": 910448,
+    "category": "Female",
+    "age": 23,
+    "squad": "Club Swimmer"
+  },
+  "madeleine soper": {
+    "swimmerName": "Madeleine Soper",
+    "seNumber": 852500,
+    "category": "Female",
+    "age": 23,
+    "squad": "Club Swimmer"
+  },
+  "oliver tomlinson": {
+    "swimmerName": "Oliver Tomlinson",
+    "seNumber": 1120210,
+    "category": "Male/Open",
+    "age": 18,
+    "squad": "Club Swimmer"
+  },
+  "rebecca flack": {
+    "swimmerName": "Rebecca Flack",
+    "seNumber": 1826632,
+    "category": "Female",
+    "age": 19,
+    "squad": "Club Swimmer"
+  },
+  "ruby soper": {
+    "swimmerName": "Ruby Soper",
+    "seNumber": 852501,
+    "category": "Female",
+    "age": 25,
+    "squad": "Club Swimmer"
+  },
+  "tristan soper": {
+    "swimmerName": "Tristan Soper",
+    "seNumber": 865987,
+    "category": "Male/Open",
+    "age": 21,
+    "squad": "Club Swimmer"
   },
   "cara blackshaw": {
     "swimmerName": "Cara Blackshaw",
